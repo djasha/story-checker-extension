@@ -4,5 +4,11 @@
 			"path": "../windsurf-project"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"githubPullRequests.remotes": [
+			"origin",
+			"upstream",
+			"https://github.com/djasha/story-checker-extension.git"
+		]
+	}
 }
