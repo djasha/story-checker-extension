@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Story Checker</title>
+  <link rel="stylesheet" href="css/popup.css">
+  <meta charset="UTF-8">
+</head>
+<body>
+  <div class="container">
+    <h1>Story Checker</h1>
+    
+    <div id="auth-section">
+      <button id="auth-button" class="btn primary">Connect to Google Sheets</button>
+      <div id="auth-status" class="status-message"></div>
+    </div>
+    
+    <div id="main-section" style="display: none;">
+      <div class="profile-info">
+        <h2 id="current-profile">Loading profiles...</h2>
+        <div id="progress-label">Preparing...</div>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="yes-button" class="btn success">YES</button>
+        <button id="no-button" class="btn danger">NO</button>
+        <button id="skip-button" class="btn neutral">SKIP</button>
+      </div>
+      
+      <div class="nav-buttons">
+        <button id="reload-button" class="btn small">🔄 Reload</button>
+        <button id="history-button" class="btn small">📋 History</button>
+        <button id="settings-button" class="btn small">⚙️ Settings</button>
+      </div>
+      
+      <div id="history-panel" class="panel" style="display: none;">
+        <h3>Check History</h3>
+        <div id="history-list"></div>
+      </div>
+    </div>
+    
+    <div class="status-bar">
+      <div id="status-message">Ready</div>
+    </div>
+  </div>
+  
+  <script src="js/popup.js"></script>
+</body>
+</html>

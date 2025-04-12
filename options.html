@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Story Checker Settings</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    button:hover {
+      background-color: #0056b3;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .section {
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Story Checker Settings</h1>
+  
+  <div class="section">
+    <h2>Google Sheets Configuration</h2>
+    <p>Enter the IDs of your Google Sheets to connect the extension with your data.</p>
+    
+    <div class="form-group">
+      <label for="peopleSheetId">People List Sheet ID:</label>
+      <input type="text" id="peopleSheetId" placeholder="Enter the Google Sheet ID for your people list">
+      <p class="help-text">This is the spreadsheet containing your list of names and Instagram/Facebook URLs.</p>
+    </div>
+    
+    <div class="form-group">
+      <label for="logSheetId">Story Checks Log Sheet ID:</label>
+      <input type="text" id="logSheetId" placeholder="Enter the Google Sheet ID for your log">
+      <p class="help-text">This is the spreadsheet where the extension will log story check results.</p>
+    </div>
+    
+    <button id="save-button">Save Settings</button>
+    <div id="status" class="status" style="display: none;"></div>
+  </div>
+  
+  <div class="section">
+    <h2>How to Find Your Sheet ID</h2>
+    <p>The Sheet ID is found in the URL of your Google Sheet:</p>
+    <ol>
+      <li>Open your Google Sheet in a browser</li>
+      <li>Look at the URL: <code>https://docs.google.com/spreadsheets/d/<b>SHEET_ID_HERE</b>/edit#gid=0</code></li>
+      <li>Copy the ID part and paste it in the appropriate field above</li>
+    </ol>
+  </div>
+  
+  <div class="section">
+    <h2>Required Spreadsheet Format</h2>
+    <p><strong>People List Sheet</strong> should have these columns:</p>
+    <ul>
+      <li>'Name' - Name of the person</li>
+      <li>'Instagram URL' - Full Instagram profile URL</li>
+      <li>'Facebook URL' - Full Facebook profile URL</li>
+    </ul>
+    
+    <p><strong>Story Checks Log</strong> will be populated with these columns:</p>
+    <ul>
+      <li>Timestamp</li>
+      <li>Name</li>
+      <li>Platform (Instagram/Facebook)</li>
+      <li>URL</li>
+      <li>Result (YES/NO)</li>
+    </ul>
+  </div>
+  
+  <script src="js/options.js"></script>
+</body>
+</html>
