@@ -14,187 +14,349 @@
       color: #333;
       box-sizing: border-box;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
     
-    /* Top action bar with big YES/NO buttons */
-    .action-bar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background-color: #f5f5f5;
-      padding: 10px 0 15px 0;
-      margin-bottom: 15px;
-      border-bottom: 1px solid #ddd;
+    .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 10px;
     }
     
-    .big-button {
-      width: 45%;
-      font-size: 24px;
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
       font-weight: bold;
-      padding: 15px 0;
+    }
+    
+    .top-controls {
+      display: flex;
+      gap: 10px;
+    }
+    
+    /* Main action area with big YES/NO buttons */
+    .main-actions {
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    
+    .current-profile {
+      margin-bottom: 10px;
+      font-weight: bold;
+      font-size: 16px;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+    
+    .current-profile.yes {
+      background-color: rgba(40, 167, 69, 0.2);
+      border-left: 4px solid #28a745;
+    }
+    
+    .current-profile.no {
+      background-color: rgba(220, 53, 69, 0.2);
+      border-left: 4px solid #dc3545;
+    }
+    
+    .current-profile-url {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+      word-break: break-all;
+    }
+    
+    .yes-no-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .yes-button, .no-button {
+      flex: 1;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      text-align: center;
-      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
     }
     
     .yes-button {
       background-color: #28a745;
       color: white;
-      background-image: linear-gradient(135deg, #28a745, #218838);
     }
     
     .yes-button:hover {
       background-color: #218838;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(33, 136, 56, 0.2);
     }
     
     .no-button {
       background-color: #dc3545;
       color: white;
-      background-image: linear-gradient(135deg, #dc3545, #c82333);
     }
     
     .no-button:hover {
       background-color: #c82333;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(200, 35, 51, 0.2);
     }
     
-    /* Current profile section */
-    .current-profile {
+    .keyboard-hint {
+      color: rgba(255,255,255,0.8);
+      font-size: 12px;
+      margin-left: 5px;
+    }
+    
+    /* Controls area */
+    .controls-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .control-button {
+      flex: 1;
+      background-color: #6c757d;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .control-button:hover {
+      background-color: #5a6268;
+    }
+    
+    .control-button.settings {
+      background-color: #17a2b8;
+    }
+    
+    .control-button.settings:hover {
+      background-color: #138496;
+    }
+    
+    .control-button.history {
+      background-color: #6610f2;
+    }
+    
+    .control-button.history:hover {
+      background-color: #520dc2;
+    }
+    
+    .control-button.sheet {
+      background-color: #20c997;
+    }
+    
+    .control-button.sheet:hover {
+      background-color: #1ba87e;
+    }
+    
+    .control-button.preload {
+      background-color: #fd7e14;
+    }
+    
+    .control-button.preload:hover {
+      background-color: #d56908;
+    }
+    
+    .control-button.filter {
+      background-color: #dc3545;
+    }
+    
+    .control-button.filter:hover {
+      background-color: #c82333;
+    }
+    
+    .control-button.filter.active {
+      background-color: #dc3545;
+      border: 2px solid white;
+      font-weight: bold;
+    }
+    
+    /* Profiles list */
+    .profiles-container {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .load-more-container {
+      padding: 10px;
+      text-align: center;
+    }
+    
+    .load-more-button {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      color: #495057;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .load-more-button:hover {
+      background-color: #e9ecef;
+    }
+    
+    .preload-options {
       background-color: white;
       border-radius: 8px;
-      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       margin-bottom: 15px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 15px;
+      display: none;
     }
     
-    .profile-name {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 5px;
+    .preload-options.active {
+      display: block;
     }
     
-    .profile-url {
-      color: #666;
-      word-break: break-all;
+    .preload-options h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    
+    .preload-amount {
+      display: flex;
+      gap: 10px;
       margin-bottom: 10px;
     }
     
-    .profile-platform {
-      display: inline-block;
+    .preload-amount button {
+      flex: 1;
+      padding: 5px;
       background-color: #e9ecef;
-      color: #495057;
-      padding: 3px 8px;
+      border: 1px solid #dee2e6;
       border-radius: 4px;
-      font-size: 12px;
-      margin-bottom: 5px;
+      cursor: pointer;
     }
     
-    /* Navigation controls */
-    .nav-controls {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 15px;
+    .preload-amount button.active {
+      background-color: #007bff;
+      color: white;
+      border-color: #007bff;
     }
     
-    .nav-button {
-      width: 48%;
-      padding: 8px 0;
-      background-color: #6c757d;
+    .start-preload-button {
+      width: 100%;
+      padding: 8px;
+      background-color: #fd7e14;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .start-preload-button:hover {
+      background-color: #d56908;
+    }
+    
+    .profiles-list {
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       gap: 8px;
-      transition: all 0.2s ease;
-    }
-    
-    .nav-button:hover {
-      background-color: #5a6268;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(90, 98, 104, 0.2);
-    }
-    
-    /* Profiles list */
-    #profiles-list {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-bottom: 20px;
     }
     
     .profile-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 10px;
-      margin-bottom: 8px;
       background-color: white;
       border-radius: 4px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .profile-item:hover {
+      background-color: #f8f9fa;
     }
     
     .profile-item.active {
+      background-color: #e2f0fd;
       border-left: 4px solid #007bff;
     }
     
-    /* Bottom controls for settings and history */
-    .bottom-controls {
-      display: flex;
-      justify-content: space-around;
-      padding: 10px 0;
-      margin-top: 20px;
-      border-top: 1px solid #ddd;
+    .profile-item.yes {
+      background-color: rgba(40, 167, 69, 0.15);
+      border-left: 4px solid #28a745;
     }
     
-    .bottom-button {
-      padding: 10px 15px;
-      background-color: #17a2b8;
+    .profile-item.no {
+      background-color: rgba(220, 53, 69, 0.15);
+      border-left: 4px solid #dc3545;
+    }
+    
+    .profile-item.active.yes {
+      background-color: rgba(40, 167, 69, 0.25);
+    }
+    
+    .profile-item.active.no {
+      background-color: rgba(220, 53, 69, 0.25);
+    }
+    
+    .profile-item.preloaded {
+      position: relative;
+    }
+    
+    .profile-item.preloaded::after {
+      content: '';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%230d6efd"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg>');
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+    
+    .profile-info {
+      flex: 1;
+    }
+    
+    .profile-name {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    
+    .profile-url {
+      font-size: 12px;
+      color: #6c757d;
+    }
+    
+    .open-button {
+      background-color: #007bff;
       color: white;
       border: none;
       border-radius: 4px;
+      padding: 5px 10px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
-      min-width: 120px;
+      margin-left: 10px;
+      font-size: 12px;
     }
     
-    .bottom-button:hover {
-      background-color: #138496;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(19, 132, 150, 0.2);
+    .open-button:hover {
+      background-color: #0069d9;
     }
     
-    .button-icon {
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      fill: currentColor;
-    }
-    
-    .button-text {
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    /* Status messages */
+    /* Status message */
     #status-message {
       position: fixed;
       top: 10px;
@@ -218,82 +380,109 @@
     }
     
     #status-message.info {
-      background-color: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
+      background-color: #cce5ff;
+      color: #004085;
+      border: 1px solid #b8daff;
     }
     
-    /* Authentication section */
+    /* Auth section */
     #auth-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
       text-align: center;
-      padding: 20px;
     }
     
-    .keyboard-hint {
-      position: absolute;
-      right: 10px;
-      font-size: 12px;
+    #auth-button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    
+    #auth-button:hover {
+      background-color: #0069d9;
+    }
+    
+    .status-text {
       color: #6c757d;
+    }
+    
+    .status-text.success {
+      color: #28a745;
+    }
+    
+    .status-text.error {
+      color: #dc3545;
     }
   </style>
 </head>
 <body>
   <div id="auth-section">
     <h1>Story Checker</h1>
-    <button id="auth-button" class="primary-button">Connect to Google Sheets</button>
+    <p>Connect to Google Sheets to check stories</p>
+    <button id="auth-button">Connect to Google Sheets</button>
     <p id="auth-status" class="status-text">Please authenticate to get started</p>
   </div>
   
   <div id="profiles-section" style="display: none;">
-    <!-- BIG YES/NO buttons at the top -->
-    <div class="action-bar">
-      <button id="yes-big-button" class="big-button yes-button">YES <span class="keyboard-hint">(Y)</span></button>
-      <button id="no-big-button" class="big-button no-button">NO <span class="keyboard-hint">(N)</span></button>
+    <div class="header">
+      <h1>Story Checker</h1>
+      <div class="top-controls">
+        <button id="reload-button" class="control-button">↻ Reload</button>
+      </div>
     </div>
     
-    <!-- Current profile being checked -->
-    <div class="current-profile">
-      <div id="current-profile-platform" class="profile-platform">Instagram</div>
-      <div id="current-profile-name" class="profile-name">Loading...</div>
-      <div id="current-profile-url" class="profile-url"></div>
-      <button id="open-profile-button" class="nav-button">Open Profile</button>
+    <!-- Main action area with big YES/NO buttons -->
+    <div class="main-actions">
+      <div id="current-profile" class="current-profile">Select a profile to check</div>
+      <div id="current-url" class="current-profile-url"></div>
+      
+      <div class="yes-no-buttons">
+        <button id="yes-button" class="yes-button" disabled>YES <span class="keyboard-hint">(Y)</span></button>
+        <button id="no-button" class="no-button" disabled>NO <span class="keyboard-hint">(N)</span></button>
+      </div>
     </div>
     
-    <!-- Navigation controls -->
-    <div class="nav-controls">
-      <button id="prev-profile" class="nav-button">Previous (↑)</button>
-      <button id="next-profile" class="nav-button">Next (↓)</button>
+    <!-- Preload Options Panel -->
+    <div id="preload-options" class="preload-options">
+      <h3>Preload Profiles</h3>
+      <div class="preload-amount">
+        <button data-amount="5" class="active">5</button>
+        <button data-amount="10">10</button>
+        <button data-amount="20">20</button>
+        <button data-amount="50">50</button>
+      </div>
+      <button id="start-preload-button" class="start-preload-button">Preload 5 Profiles</button>
     </div>
     
-    <!-- All profiles section -->
-    <h3>All Profiles</h3>
-    <div id="profiles-container">
-      <div id="profiles-list"></div>
+    <!-- Controls bar -->
+    <div class="controls-bar">
+      <button id="open-button" class="control-button" disabled>Open Profile</button>
+      <button id="filter-no-button" class="control-button filter">Show NO</button>
+      <button id="preload-button" class="control-button preload" disabled>Preload</button>
     </div>
     
-    <!-- Bottom controls for settings and history -->
-    <div class="bottom-controls">
-      <button id="reload-button" class="bottom-button">
-        <svg class="button-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-        </svg>
-        <span class="button-text">Reload</span>
-      </button>
-      <button id="settings-button" class="bottom-button">
-        <svg class="button-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-        <span class="button-text">Settings</span>
-      </button>
-      <button id="history-button" class="bottom-button">
-        <svg class="button-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <path d="M16 16v5a2 2 0 0 0 2 2h-8"/>
-        </svg>
-        <span class="button-text">History</span>
-      </button>
+    <!-- Sheet Controls -->
+    <div class="controls-bar">
+      <button id="profiles-sheet-button" class="control-button sheet">Profiles Sheet</button>
+      <button id="history-button" class="control-button history">History Sheet</button>
+      <button id="settings-button" class="control-button settings">Settings</button>
+    </div>
+    
+    <!-- Profiles list -->
+    <div class="profiles-container">
+      <div id="profiles-list" class="profiles-list"></div>
+      <div id="load-more-container" class="load-more-container" style="display: none;">
+        <button id="load-more-button" class="load-more-button">Load More Profiles</button>
+      </div>
     </div>
     
     <div id="status-message"></div>

@@ -3,16 +3,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
   const peopleSheetIdInput = document.getElementById('peopleSheetId');
   const logSheetIdInput = document.getElementById('logSheetId');
+  const specialProfilesInput = document.getElementById('specialProfiles');
   const saveButton = document.getElementById('save-button');
   const statusDiv = document.getElementById('status');
   
   // Load saved settings
-  chrome.storage.local.get(['peopleSheetId', 'logSheetId'], (result) => {
+  chrome.storage.local.get(['peopleSheetId', 'logSheetId', 'specialProfiles'], (result) => {
     if (result.peopleSheetId) {
       peopleSheetIdInput.value = result.peopleSheetId;
     }
     if (result.logSheetId) {
       logSheetIdInput.value = result.logSheetId;
+    }
+    if (result.specialProfiles) {
+      specialProfilesInput.value = result.specialProfiles.join('\n');
     }
   });
   
@@ -20,6 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
   saveButton.addEventListener('click', () => {
     const peopleSheetId = peopleSheetIdInput.value.trim();
     const logSheetId = logSheetIdInput.value.trim();
+    const specialProfilesText = specialProfilesInput.value;
+    
+    // Parse special profiles - one per line, remove empty lines
+    const specialProfiles = specialProfilesText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
     
     // Validate inputs
     if (!peopleSheetId || !logSheetId) {
@@ -31,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set(
       { 
         peopleSheetId: peopleSheetId, 
-        logSheetId: logSheetId 
+        logSheetId: logSheetId,
+        specialProfiles: specialProfiles
       },
       () => {
         showStatus('Settings saved successfully!', 'success');

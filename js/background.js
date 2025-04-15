@@ -6,15 +6,9 @@ const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TAB_STORAGE_KEY = 'story_checker_tab';
 const PEOPLE_SHEET_ID = '1UJ99bEedIu5OEtWXDWM50XiAkT_puxaQ253XVeTBAqQ';
 const LOG_SHEET_ID = '1M2yMVO4vuRS0VXpJeI7ZPSH4wIcoQhCAlJ3q3Liw1wc';
-const PRELOAD_COUNT = 10; // Number of profiles to preload in advance
-const PROFILE_SWITCH_DELAY = 100; // Reduced delay for profile switching
 
 // State
 let storyCheckerTab = null;
-let preloadedTabs = {};
-let currentProfileIndex = 0;
-let allProfiles = [];
-let specialProfiles = new Set();
 
 // Initialize
 chrome.runtime.onInstalled.addListener(() => {
@@ -25,13 +19,6 @@ chrome.runtime.onInstalled.addListener(() => {
     logSheetId: LOG_SHEET_ID
   }, () => {
     console.log('Sheet IDs set successfully');
-  });
-  
-  // Load special profiles on startup
-  chrome.storage.local.get(['specialProfiles'], (result) => {
-    if (result.specialProfiles) {
-      specialProfiles = new Set(result.specialProfiles);
-    }
   });
 });
 
@@ -57,12 +44,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
       
     case 'openProfile':
-      openProfile(request.url, request.name, request.platform, request.index, sendResponse);
-      return true;
-      
-    case 'preloadProfiles':
-      preloadProfiles(request.profiles, request.currentIndex);
-      sendResponse({ success: true });
+      openProfile(request.url, request.name, request.platform, sendResponse);
       return true;
       
     case 'logChoice':
@@ -198,10 +180,6 @@ function fetchProfiles(sendResponse) {
           }
         }
         
-        // Save profiles for preloading
-        allProfiles = profiles;
-        
-        // Send response with profiles
         sendResponse({ success: true, profiles });
       } catch (error) {
         console.error('Error fetching profiles:', error);
@@ -211,81 +189,54 @@ function fetchProfiles(sendResponse) {
   });
 }
 
-// Preload multiple profiles in advance
-async function preloadProfiles(profiles, currentIndex) {
-  const start = currentIndex + 1;
-  const end = Math.min(start + PRELOAD_COUNT, profiles.length);
-  
-  for (let i = start; i < end; i++) {
-    await preloadProfileTab(i);
-  }
-}
-
-// Preload a single profile tab (without activating it)
-async function preloadProfileTab(index) {
-  if (preloadedTabs[index]) return;
-  
-  const profile = allProfiles[index];
-  if (!profile) return;
-  
-  try {
-    const tab = await chrome.tabs.create({
-      url: profile.url,
-      active: false,
-      windowId: storyCheckerTab.windowId
-    });
-    
-    preloadedTabs[index] = tab.id;
-    console.log(`Preloaded profile ${index}: ${profile.name}`);
-  } catch (error) {
-    console.error(`Error preloading profile ${index}:`, error);
-  }
-}
-
 // Open a profile in a tab
-async function openProfile(url, name, platform, index, sendResponse) {
-  // Update current index
-  currentProfileIndex = index !== undefined ? index : currentProfileIndex;
-  
-  // If we have a preloaded tab for this index, use it
-  if (preloadedTabs[currentProfileIndex]) {
-    try {
-      await chrome.tabs.update(preloadedTabs[currentProfileIndex], {
-        active: true
-      });
-      
-      // Clean up older preloaded tabs
-      Object.keys(preloadedTabs).forEach(key => {
-        const tabIndex = parseInt(key);
-        if (tabIndex < currentProfileIndex - PRELOAD_COUNT) {
-          chrome.tabs.remove(preloadedTabs[key]);
-          delete preloadedTabs[key];
-        }
-      });
-      
-      sendResponse({ success: true });
-      return;
-    } catch (error) {
-      console.error('Error activating preloaded tab:', error);
-      delete preloadedTabs[currentProfileIndex];
-    }
-  }
-  
-  // If we don't have a preloaded tab, create a new one
+async function openProfile(url, name, platform, sendResponse) {
   try {
-    const tab = await chrome.tabs.create({
-      url: url,
-      active: true,
-      windowId: storyCheckerTab.windowId
+    // First check if we already have a tab open
+    let existingTab = null;
+    
+    // Try to find the existing tab from storage
+    const storedTabId = await new Promise(resolve => {
+      chrome.storage.local.get(TAB_STORAGE_KEY, (result) => {
+        resolve(result[TAB_STORAGE_KEY]);
+      });
     });
     
-    // Start preloading next profiles
-    preloadProfiles(allProfiles, currentProfileIndex);
+    if (storedTabId) {
+      try {
+        existingTab = await new Promise(resolve => {
+          chrome.tabs.get(storedTabId, tab => {
+            if (chrome.runtime.lastError) {
+              resolve(null);
+            } else {
+              resolve(tab);
+            }
+          });
+        });
+      } catch (e) {
+        existingTab = null;
+      }
+    }
     
-    sendResponse({ success: true });
+    if (existingTab) {
+      // Update the existing tab
+      chrome.tabs.update(existingTab.id, { 
+        active: true,
+        url: url
+      });
+      storyCheckerTab = existingTab.id;
+    } else {
+      // Create a new tab
+      chrome.tabs.create({ url: url }, (tab) => {
+        storyCheckerTab = tab.id;
+        chrome.storage.local.set({ [TAB_STORAGE_KEY]: tab.id });
+      });
+    }
+    
+    if (sendResponse) sendResponse({ success: true });
   } catch (error) {
     console.error('Error opening profile:', error);
-    sendResponse({ success: false, error: error.message });
+    if (sendResponse) sendResponse({ success: false, error: error.message });
   }
 }
 
@@ -313,8 +264,15 @@ function reloadStoryCheckerTab(sendResponse) {
 }
 
 // Log choice to Google Sheets
-async function logChoice(profile, choice, timestamp, sendResponse) {
-  // Get a fresh token just to be sure
+function logChoice(profile, choice, timestamp, sendResponse) {
+  // If choice is NO, don't log to the sheet, just return success
+  if (choice === 'NO') {
+    console.log('NO choice selected, not logging to sheet');
+    sendResponse({ success: true });
+    return;
+  }
+  
+  // Get a fresh token - only for YES choices
   chrome.identity.getAuthToken({ interactive: false }, (token) => {
     if (chrome.runtime.lastError || !token) {
       console.error('Token retrieval error:', chrome.runtime.lastError);
@@ -328,16 +286,17 @@ async function logChoice(profile, choice, timestamp, sendResponse) {
     // Store the refreshed token
     chrome.storage.local.set({ authToken: token });
     
-    // Get the sheet ID
-    chrome.storage.local.get(['logSheetId'], async (result) => {
+    // Get the sheet ID and special profiles
+    chrome.storage.local.get(['logSheetId', 'specialProfiles'], async (result) => {
       if (!result.logSheetId) {
         sendResponse({ success: false, error: 'Log Sheet ID not set' });
         return;
       }
       
       try {
-        // Format the timestamp for Google Sheets
-        const formattedTimestamp = new Date(timestamp).toLocaleString();
+        // Format the timestamp as Day/Month only (e.g., 14/4)
+        const date = new Date(timestamp);
+        const formattedTimestamp = `${date.getDate()}/${date.getMonth() + 1}`;
         
         // Check if we need to add a date separator
         const today = new Date(timestamp).toDateString();
@@ -346,39 +305,31 @@ async function logChoice(profile, choice, timestamp, sendResponse) {
           lastCheckDate = today;
         }
         
-        // Determine what to log based on special profiles
+        // Check if this profile is in the special profiles list
+        const specialProfiles = result.specialProfiles || [];
+        const isSpecialProfile = specialProfiles.includes(profile.name);
+        
+        // Log both Instagram and Facebook URLs if available (YES only)
         let rowsToLog = [];
         
-        if (specialProfiles.has(profile.name)) {
-          // Log just the name for special profiles
+        if (profile.instagram_url) {
           rowsToLog.push([
-            formattedTimestamp,
-            profile.name,
-            profile.platform,
-            '', // Empty URL for special profiles
-            choice
+            formattedTimestamp,   // Column A: Date
+            profile.name,         // Column B: Name
+            'Instagram',          // Column C: Platform
+            isSpecialProfile ? profile.name : profile.instagram_url, // Column D: URL or name for special profiles
+            choice                // Column E: Story Posted
           ]);
-        } else {
-          // Log both Instagram and Facebook URLs if available
-          if (profile.instagram_url) {
-            rowsToLog.push([
-              formattedTimestamp,
-              profile.name,
-              'Instagram',
-              profile.instagram_url,
-              choice
-            ]);
-          }
-          
-          if (profile.facebook_url && (profile.platform !== 'Facebook' || !profile.instagram_url)) {
-            rowsToLog.push([
-              formattedTimestamp,
-              profile.name,
-              'Facebook',
-              profile.facebook_url,
-              choice
-            ]);
-          }
+        }
+        
+        if (profile.facebook_url && (profile.platform !== 'Facebook' || !profile.instagram_url)) {
+          rowsToLog.push([
+            formattedTimestamp,   // Column A: Date
+            profile.name,         // Column B: Name
+            'Facebook',           // Column C: Platform
+            isSpecialProfile ? profile.name : profile.facebook_url, // Column D: URL or name for special profiles
+            choice                // Column E: Story Posted
+          ]);
         }
         
         // Log all rows to Google Sheets
@@ -401,14 +352,6 @@ async function logChoice(profile, choice, timestamp, sendResponse) {
             throw new Error(`API request failed with status ${response.status}`);
           }
         }
-        
-        // After logging, switch to next profile immediately
-        setTimeout(() => {
-          chrome.runtime.sendMessage({
-            action: 'navigateToProfile',
-            index: currentProfileIndex + 1
-          });
-        }, PROFILE_SWITCH_DELAY);
         
         sendResponse({ success: true });
       } catch (error) {
