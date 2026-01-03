@@ -747,6 +747,127 @@
         transform: rotate(360deg);
       }
     }
+
+    /* SEARCH MODE */
+    .icon-btn.search-active {
+      background: #0ea5e9;
+      color: white;
+      border-color: #0ea5e9;
+    }
+
+    .search-nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      padding: var(--space-sm);
+      display: none;
+      z-index: 100;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-nav-bar.active {
+      display: block;
+    }
+
+    .search-nav-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-xs);
+    }
+
+    .search-nav-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    .search-nav-close {
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--color-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+    }
+
+    .search-nav-close:hover {
+      background: var(--color-bg);
+      color: var(--color-danger);
+    }
+
+    .search-current-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: 4px 8px;
+      background: var(--color-bg);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-sm);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .search-nav-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .search-match-counter {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      flex: 1;
+      text-align: center;
+    }
+
+    .search-nav-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .search-nav-btn:hover:not(:disabled) {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .search-nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .search-mode-banner {
+      background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+      color: white;
+      padding: 6px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    .search-mode-banner.active {
+      display: block;
+    }
+
+    .profiles-container.search-mode {
+      padding-bottom: 100px;
+    }
   </style>
 </head>
 
@@ -775,6 +896,7 @@
           <button id="settings-button" class="icon-btn" title="Settings"
             style="background:#06b6d4;color:white;border-color:#06b6d4;">&cir;</button>
           <button id="reload-button" class="icon-btn" title="Reload">&orarr;</button>
+          <button id="search-mode-button" class="icon-btn" title="Search Mode">&#128269;</button>
         </div>
       </div>
 
@@ -811,6 +933,18 @@
   </div>
 
   <div id="status-message"></div>
+
+  <div id="search-nav-bar" class="search-nav-bar">
+    <div class="search-nav-header">
+      <span class="search-nav-title">Search in Google Sheets</span>
+      <button id="search-nav-close" class="search-nav-close">&times;</button>
+    </div>
+    <div id="search-current-name" class="search-current-name">Click a profile to search</div>
+    <div class="search-nav-controls">
+      <button id="search-prev-btn" class="search-nav-btn" disabled>&larr; Prev</button>
+      <span id="search-match-counter" class="search-match-counter">No matches</span>
+      <button id="search-next-btn" class="search-nav-btn" disabled>Next &rarr;</button>
+    </div>
   </div>
 
   <div id="completion-section">

@@ -16,6 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadingOverlay = document.getElementById('loading-overlay');
   const backButton = document.getElementById('back-button');
 
+  // Search mode elements
+  const searchModeButton = document.getElementById('search-mode-button');
+  const searchNavBar = document.getElementById('search-nav-bar');
+  const searchNavClose = document.getElementById('search-nav-close');
+  const searchCurrentName = document.getElementById('search-current-name');
+  const searchMatchCounter = document.getElementById('search-match-counter');
+  const searchPrevBtn = document.getElementById('search-prev-btn');
+  const searchNextBtn = document.getElementById('search-next-btn');
+  const profilesContainer = document.querySelector('.profiles-container');
+
   // Stats (clickable for filtering)
   const statYes = document.getElementById('stat-yes');
   const statNo = document.getElementById('stat-no');
@@ -51,6 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let skippedProfiles = new Set();
   let specialProfiles = [];
   let currentFilter = null; // 'yes', 'no', 'pending', or null (all)
+  let isSearchMode = false;
+  let currentSearchName = '';
+  let searchMatchTotal = 0;
+  let searchMatchCurrent = 0;
 
   // Save state on close
   window.addEventListener('beforeunload', saveState);
@@ -80,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
   yesButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'YES'));
   noButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'NO'));
   loadMoreButton.addEventListener('click', loadMoreProfiles);
-  loadMoreButton.addEventListener('click', loadMoreProfiles);
   backButton.addEventListener('click', goBack);
   copyLinksButton.addEventListener('click', copyYesLinks);
   clearButton.addEventListener('click', clearAndStartOver);
@@ -89,6 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
   statYes.addEventListener('click', () => toggleFilter('yes'));
   statNo.addEventListener('click', () => toggleFilter('no'));
   statPending.addEventListener('click', () => toggleFilter('pending'));
+
+  // Search mode event listeners
+  searchModeButton.addEventListener('click', toggleSearchMode);
+  searchNavClose.addEventListener('click', exitSearchMode);
+  searchPrevBtn.addEventListener('click', searchPrevMatch);
+  searchNextBtn.addEventListener('click', searchNextMatch);
 
   document.addEventListener('keydown', handleKeyPress);
   document.addEventListener('click', closeAllDropdowns);
@@ -450,7 +469,13 @@ document.addEventListener('DOMContentLoaded', () => {
       updateBackButtonState();
     }
     selectProfileCore(idx);
-    openProfileDirect(profiles[idx]);
+    
+    // In search mode, search in sheets instead of opening profile
+    if (isSearchMode) {
+      searchInSheets(profiles[idx].name);
+    } else {
+      openProfileDirect(profiles[idx]);
+    }
     scrollToActiveProfile();
   }
 
@@ -560,6 +585,123 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['peopleSheetId'], r => {
       if (r.peopleSheetId) chrome.tabs.create({ url: `https://docs.google.com/spreadsheets/d/${r.peopleSheetId}/edit` });
       else showStatusMessage('No profiles sheet', 'error');
+    });
+  }
+
+  // Search Mode Functions
+  function toggleSearchMode() {
+    if (isSearchMode) {
+      exitSearchMode();
+    } else {
+      enterSearchMode();
+    }
+  }
+
+  function enterSearchMode() {
+    isSearchMode = true;
+    searchModeButton.classList.add('search-active');
+    searchNavBar.classList.add('active');
+    profilesContainer.classList.add('search-mode');
+    
+    // Filter to show only YES profiles
+    currentFilter = 'yes';
+    statYes.classList.add('active');
+    statNo.classList.remove('active');
+    statPending.classList.remove('active');
+    applyFilter();
+    
+    // Reset search state
+    currentSearchName = '';
+    searchMatchTotal = 0;
+    searchMatchCurrent = 0;
+    updateSearchUI();
+    
+    showStatusMessage('Search Mode: Click a YES profile to find in Sheets', 'info');
+  }
+
+  function exitSearchMode() {
+    isSearchMode = false;
+    searchModeButton.classList.remove('search-active');
+    searchNavBar.classList.remove('active');
+    profilesContainer.classList.remove('search-mode');
+    
+    // Clear search in sheets
+    chrome.runtime.sendMessage({ action: 'clearSheetSearch' });
+    
+    // Reset filter
+    currentFilter = null;
+    statYes.classList.remove('active');
+    statNo.classList.remove('active');
+    statPending.classList.remove('active');
+    applyFilter();
+    
+    showStatusMessage('Exited Search Mode', 'info');
+  }
+
+  function updateSearchUI() {
+    if (currentSearchName) {
+      searchCurrentName.textContent = currentSearchName;
+    } else {
+      searchCurrentName.textContent = 'Click a profile to search';
+    }
+    
+    if (searchMatchTotal > 0) {
+      searchMatchCounter.textContent = `Match ${searchMatchCurrent} of ${searchMatchTotal}`;
+      searchPrevBtn.disabled = false;
+      searchNextBtn.disabled = false;
+    } else if (currentSearchName) {
+      searchMatchCounter.textContent = 'No matches found';
+      searchPrevBtn.disabled = true;
+      searchNextBtn.disabled = true;
+    } else {
+      searchMatchCounter.textContent = 'No search active';
+      searchPrevBtn.disabled = true;
+      searchNextBtn.disabled = true;
+    }
+  }
+
+  function searchInSheets(name) {
+    currentSearchName = name;
+    searchMatchTotal = 0;
+    searchMatchCurrent = 0;
+    updateSearchUI();
+    
+    showStatusMessage(`Searching for "${name}"...`, 'info');
+    
+    chrome.runtime.sendMessage({
+      action: 'searchInSheets',
+      name: name
+    }, response => {
+      if (response?.found) {
+        searchMatchTotal = response.total;
+        searchMatchCurrent = response.current;
+        showStatusMessage(`Found ${response.total} match(es)`, 'success');
+      } else if (response?.message) {
+        showStatusMessage(response.message, 'info');
+      } else {
+        showStatusMessage('No matches found', 'info');
+      }
+      updateSearchUI();
+    });
+  }
+
+  function searchNextMatch() {
+    chrome.runtime.sendMessage({ action: 'sheetsNextMatch' }, response => {
+      if (response?.found) {
+        searchMatchTotal = response.total;
+        searchMatchCurrent = response.current;
+        updateSearchUI();
+      }
+    });
+  }
+
+  function searchPrevMatch() {
+    chrome.runtime.sendMessage({ action: 'sheetsPrevMatch' }, response => {
+      if (response?.found) {
+        searchMatchTotal = response.total;
+        searchMatchCurrent = response.current;
+        updateSearchUI();
+      }
     });
   }
 

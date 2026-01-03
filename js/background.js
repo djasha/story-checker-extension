@@ -51,6 +51,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'addDateSeparator':
       addDateSeparator(request.date);
       return false; // No response needed
+
+    case 'searchInSheets':
+      searchInSheetsTab(request.name, sendResponse);
+      return true;
+
+    case 'sheetsNextMatch':
+      sendToSheetsTab('nextMatch', sendResponse);
+      return true;
+
+    case 'sheetsPrevMatch':
+      sendToSheetsTab('prevMatch', sendResponse);
+      return true;
+
+    case 'clearSheetSearch':
+      sendToSheetsTab('clearSearch', sendResponse);
+      return true;
   }
 });
 
@@ -353,6 +369,76 @@ function logChoice(profile, choice, timestamp, sendResponse) {
       }
     });
   });
+}
+
+// Find Google Sheets tab and send search message
+async function searchInSheetsTab(name, sendResponse) {
+  try {
+    const tabs = await chrome.tabs.query({ url: 'https://docs.google.com/spreadsheets/*' });
+    
+    if (tabs.length === 0) {
+      sendResponse({ found: false, error: 'No Google Sheets tab found. Please open a Google Sheet first.' });
+      return;
+    }
+
+    const sheetsTab = tabs[0];
+    
+    // Try to send message to content script
+    try {
+      const response = await chrome.tabs.sendMessage(sheetsTab.id, {
+        action: 'searchName',
+        name: name
+      });
+      sendResponse(response);
+    } catch (err) {
+      // Content script might not be loaded, try injecting it
+      console.log('Injecting sheets content script...');
+      await chrome.scripting.executeScript({
+        target: { tabId: sheetsTab.id },
+        files: ['js/sheets-content.js']
+      });
+      
+      // Wait for script to initialize using Promise-based delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      try {
+        const response = await chrome.tabs.sendMessage(sheetsTab.id, {
+          action: 'searchName',
+          name: name
+        });
+        sendResponse(response);
+      } catch (e) {
+        sendResponse({ found: false, error: 'Failed to communicate with Google Sheets' });
+      }
+    }
+  } catch (error) {
+    console.error('Error searching in sheets:', error);
+    sendResponse({ found: false, error: error.message });
+  }
+}
+
+// Send action to sheets content script
+async function sendToSheetsTab(action, sendResponse) {
+  try {
+    const tabs = await chrome.tabs.query({ url: 'https://docs.google.com/spreadsheets/*' });
+    
+    if (tabs.length === 0) {
+      if (sendResponse) sendResponse({ found: false });
+      return;
+    }
+
+    const sheetsTab = tabs[0];
+    
+    try {
+      const response = await chrome.tabs.sendMessage(sheetsTab.id, { action: action });
+      if (sendResponse) sendResponse(response);
+    } catch (err) {
+      if (sendResponse) sendResponse({ found: false });
+    }
+  } catch (error) {
+    console.error('Error sending to sheets tab:', error);
+    if (sendResponse) sendResponse({ found: false });
+  }
 }
 
 // Add a date separator to the log sheet
