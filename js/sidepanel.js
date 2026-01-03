@@ -650,29 +650,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSearchUI() {
     if (currentSearchName) {
       searchCurrentName.value = currentSearchName;
+      searchMatchCounter.textContent = 'Use Sheets Find dialog';
     } else {
       searchCurrentName.value = '';
+      searchMatchCounter.textContent = 'Type name + Enter';
     }
-    
-    if (searchMatchTotal > 0) {
-      searchMatchCounter.textContent = `Match ${searchMatchCurrent} of ${searchMatchTotal}`;
-      searchPrevBtn.disabled = false;
-      searchNextBtn.disabled = false;
-    } else if (currentSearchName) {
-      searchMatchCounter.textContent = 'No matches found';
-      searchPrevBtn.disabled = true;
-      searchNextBtn.disabled = true;
-    } else {
-      searchMatchCounter.textContent = 'No search active';
-      searchPrevBtn.disabled = true;
-      searchNextBtn.disabled = true;
-    }
+    // Hide prev/next - user uses native Sheets Find navigation
+    searchPrevBtn.style.display = 'none';
+    searchNextBtn.style.display = 'none';
   }
 
   function searchInSheets(name) {
     currentSearchName = name;
-    searchMatchTotal = 0;
-    searchMatchCurrent = 0;
     updateSearchUI();
     
     showStatusMessage(`Searching for "${name}"...`, 'info');
@@ -682,13 +671,9 @@ document.addEventListener('DOMContentLoaded', () => {
       name: name
     }, response => {
       if (response?.found) {
-        searchMatchTotal = response.total;
-        searchMatchCurrent = response.current;
-        showStatusMessage(`Found ${response.total} match(es)`, 'success');
-      } else if (response?.message) {
-        showStatusMessage(response.message, 'info');
+        showStatusMessage(response.message || `Found at row ${response.row}`, 'success');
       } else {
-        showStatusMessage('No matches found', 'info');
+        showStatusMessage(response?.message || 'Not found', 'error');
       }
       updateSearchUI();
     });

@@ -413,49 +413,108 @@ function logChoice(profile, choice, timestamp, sendResponse) {
   });
 }
 
-// Find Google Sheets tab and send search message
+// Search for name in the currently open Google Sheet and navigate to the cell
 async function searchInSheetsTab(name, sendResponse) {
   try {
+    // Find the currently open Google Sheets tab
     const tabs = await chrome.tabs.query({ url: 'https://docs.google.com/spreadsheets/*' });
     
     if (tabs.length === 0) {
-      sendResponse({ found: false, error: 'No Google Sheets tab found. Please open a Google Sheet first.' });
+      sendResponse({ found: false, message: 'No Google Sheet open. Please open a sheet first.' });
       return;
     }
-
-    const sheetsTab = tabs[0];
     
-    // Try to send message to content script
-    try {
-      const response = await chrome.tabs.sendMessage(sheetsTab.id, {
-        action: 'searchName',
-        name: name
-      });
-      sendResponse(response);
-    } catch (err) {
-      // Content script might not be loaded, try injecting it
-      console.log('Injecting sheets content script...');
-      await chrome.scripting.executeScript({
-        target: { tabId: sheetsTab.id },
-        files: ['js/sheets-content.js']
-      });
-      
-      // Wait for script to initialize using Promise-based delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      try {
-        const response = await chrome.tabs.sendMessage(sheetsTab.id, {
-          action: 'searchName',
-          name: name
-        });
-        sendResponse(response);
-      } catch (e) {
-        sendResponse({ found: false, error: 'Failed to communicate with Google Sheets' });
-      }
+    const sheetsTab = tabs[0];
+    const tabUrl = sheetsTab.url;
+    
+    // Extract sheet ID from URL
+    const sheetIdMatch = tabUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (!sheetIdMatch) {
+      sendResponse({ found: false, message: 'Could not get sheet ID from URL' });
+      return;
     }
+    const sheetId = sheetIdMatch[1];
+    
+    // Extract gid (sheet tab) from URL if present
+    const gidMatch = tabUrl.match(/gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : '0';
+    
+    // Get auth token
+    const token = await new Promise(resolve => {
+      chrome.identity.getAuthToken({ interactive: false }, resolve);
+    });
+    
+    if (!token) {
+      sendResponse({ found: false, message: 'Not authenticated. Please reconnect.' });
+      return;
+    }
+    
+    // First get sheet metadata to find the sheet name for the current gid
+    const metaResponse = await fetch(
+      `${SHEETS_API_BASE}/${sheetId}?fields=sheets(properties(sheetId,title))`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    
+    if (!metaResponse.ok) {
+      sendResponse({ found: false, message: 'Failed to access sheet' });
+      return;
+    }
+    
+    const metaData = await metaResponse.json();
+    const sheets = metaData.sheets || [];
+    const currentSheet = sheets.find(s => s.properties.sheetId.toString() === gid);
+    const sheetName = currentSheet ? currentSheet.properties.title : 'Sheet1';
+    
+    // Fetch sheet data to search (use the current sheet tab)
+    const response = await fetch(
+      `${SHEETS_API_BASE}/${sheetId}/values/'${encodeURIComponent(sheetName)}'!A:Z?majorDimension=ROWS`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    
+    if (!response.ok) {
+      sendResponse({ found: false, message: 'Failed to fetch sheet data' });
+      return;
+    }
+    
+    const data = await response.json();
+    const rows = data.values || [];
+    
+    // Search for the name (case-insensitive partial match)
+    const searchLower = name.toLowerCase().trim();
+    let foundRow = -1;
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      for (let j = 0; j < row.length; j++) {
+        if (row[j] && row[j].toString().toLowerCase().includes(searchLower)) {
+          foundRow = i + 1; // Sheets are 1-indexed
+          break;
+        }
+      }
+      if (foundRow > 0) break;
+    }
+    
+    if (foundRow === -1) {
+      sendResponse({ found: false, message: `"${name}" not found` });
+      return;
+    }
+    
+    // Navigate to the cell in the same sheet tab
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit#gid=${gid}&range=A${foundRow}`;
+    
+    // Update existing tab to navigate to the cell
+    await chrome.tabs.update(sheetsTab.id, { url: sheetUrl, active: true });
+    await chrome.windows.update(sheetsTab.windowId, { focused: true });
+    
+    sendResponse({ 
+      found: true, 
+      row: foundRow,
+      message: `Found at row ${foundRow}`
+    });
+    
   } catch (error) {
     console.error('Error searching in sheets:', error);
-    sendResponse({ found: false, error: error.message });
+    sendResponse({ found: false, message: error.message });
   }
 }
 
