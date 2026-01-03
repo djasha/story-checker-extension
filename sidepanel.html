@@ -808,13 +808,19 @@
       font-size: 12px;
       font-weight: 600;
       color: var(--color-text);
-      padding: 4px 8px;
+      padding: 6px 10px;
       background: var(--color-bg);
       border-radius: var(--radius-sm);
       margin-bottom: var(--space-sm);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      width: 100%;
+      border: 1px solid var(--color-border);
+      outline: none;
+      font-family: inherit;
+    }
+
+    .search-current-name:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
     }
 
     .search-nav-controls {
@@ -939,7 +945,7 @@
       <span class="search-nav-title">Search in Google Sheets</span>
       <button id="search-nav-close" class="search-nav-close">&times;</button>
     </div>
-    <div id="search-current-name" class="search-current-name">Click a profile to search</div>
+    <input type="text" id="search-current-name" class="search-current-name" placeholder="Type name or click a profile..." />
     <div class="search-nav-controls">
       <button id="search-prev-btn" class="search-nav-btn" disabled>&larr; Prev</button>
       <span id="search-match-counter" class="search-match-counter">No matches</span>

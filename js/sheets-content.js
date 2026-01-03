@@ -4,263 +4,272 @@
 (function() {
   'use strict';
 
-  // State
   let currentSearchTerm = '';
-  let matches = [];
-  let currentMatchIndex = -1;
-  let highlightOverlay = null;
+  let searchAttempts = 0;
 
-  // Create highlight overlay element
-  function createHighlightOverlay() {
-    if (highlightOverlay) return;
-    
-    highlightOverlay = document.createElement('div');
-    highlightOverlay.id = 'story-checker-highlight';
-    highlightOverlay.style.cssText = `
-      position: fixed;
-      pointer-events: none;
-      border: 3px solid #10b981;
-      background: rgba(16, 185, 129, 0.2);
-      border-radius: 4px;
-      z-index: 10000;
-      display: none;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-    `;
-    document.body.appendChild(highlightOverlay);
+  // Find the native Find input in Google Sheets
+  function getFindInput() {
+    return document.querySelector('input[aria-label="Find"]') || 
+           document.querySelector('input.docs-findinput-input') ||
+           document.querySelector('.waffle-find-and-replace-input input') ||
+           document.querySelector('[data-id="find-input"]');
   }
 
-  // Remove highlight
-  function hideHighlight() {
-    if (highlightOverlay) {
-      highlightOverlay.style.display = 'none';
-    }
-  }
-
-  // Show highlight at position
-  function showHighlightAt(rect) {
-    if (!highlightOverlay) createHighlightOverlay();
-    
-    highlightOverlay.style.left = `${rect.left - 3}px`;
-    highlightOverlay.style.top = `${rect.top - 3}px`;
-    highlightOverlay.style.width = `${rect.width + 6}px`;
-    highlightOverlay.style.height = `${rect.height + 6}px`;
-    highlightOverlay.style.display = 'block';
-  }
-
-  // Use native Find & Replace dialog approach
-  function triggerNativeFind(searchTerm) {
-    // Focus the document first
-    document.body.focus();
-    
-    // Try to use Ctrl+H (Find & Replace) which is more reliable for navigation
-    const isMac = navigator.platform.includes('Mac');
-    const event = new KeyboardEvent('keydown', {
-      key: 'h',
-      code: 'KeyH',
-      ctrlKey: !isMac,
-      metaKey: isMac,
-      bubbles: true,
-      cancelable: true
-    });
-    document.dispatchEvent(event);
-    
-    // Wait for dialog and fill in search term
-    setTimeout(() => {
-      const findInput = document.querySelector('input[aria-label="Find"]') || 
-                        document.querySelector('input.docs-findinput-input') ||
-                        document.querySelector('[data-sheets-dialog-id] input[type="text"]');
-      
+  // Open native Find dialog using keyboard shortcut
+  function openFindDialog() {
+    return new Promise((resolve) => {
+      // Check if dialog is already open
+      let findInput = getFindInput();
       if (findInput) {
-        findInput.value = searchTerm;
-        findInput.dispatchEvent(new Event('input', { bubbles: true }));
-        
-        // Trigger search
-        const enterEvent = new KeyboardEvent('keydown', {
-          key: 'Enter',
-          code: 'Enter',
-          bubbles: true,
-          cancelable: true
-        });
-        findInput.dispatchEvent(enterEvent);
+        resolve(findInput);
+        return;
       }
-    }, 300);
-  }
 
-  // Search for text in visible cells using DOM
-  function searchInDOM(searchTerm) {
-    matches = [];
-    currentMatchIndex = -1;
-    
-    const searchLower = searchTerm.toLowerCase().trim();
-    if (!searchLower) return { found: false, total: 0, current: 0 };
+      // Focus the spreadsheet area first
+      const spreadsheet = document.querySelector('.docs-sheet-area-background') || 
+                          document.querySelector('[role="grid"]') ||
+                          document.body;
+      spreadsheet.focus();
 
-    // Google Sheets renders cells in various ways
-    // Try multiple selectors to find cell content
-    const cellSelectors = [
-      '[data-sheets-value]',
-      '.cell-input',
-      '[role="gridcell"]',
-      '.softmerge-inner',
-      '.s2'
-    ];
-
-    const allCells = [];
-    cellSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => {
-        if (!allCells.includes(el)) allCells.push(el);
+      // Trigger Ctrl+F / Cmd+F
+      const isMac = navigator.platform.includes('Mac');
+      const findEvent = new KeyboardEvent('keydown', {
+        key: 'f',
+        code: 'KeyF',
+        keyCode: 70,
+        which: 70,
+        ctrlKey: !isMac,
+        metaKey: isMac,
+        bubbles: true,
+        cancelable: true
       });
-    });
+      document.dispatchEvent(findEvent);
 
-    allCells.forEach(cell => {
-      let text = '';
-      
-      // Try to get text from data attribute first
-      if (cell.hasAttribute('data-sheets-value')) {
-        try {
-          const value = JSON.parse(cell.getAttribute('data-sheets-value'));
-          text = value[1]?.toString() || value[2]?.toString() || '';
-        } catch (e) {
-          text = cell.textContent || '';
+      // Wait for dialog to appear
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        findInput = getFindInput();
+        if (findInput) {
+          clearInterval(checkInterval);
+          resolve(findInput);
+        } else if (++attempts > 20) {
+          clearInterval(checkInterval);
+          resolve(null);
         }
-      } else {
-        text = cell.textContent || '';
-      }
-
-      if (text.toLowerCase().includes(searchLower)) {
-        matches.push({
-          element: cell,
-          text: text
-        });
-      }
+      }, 100);
     });
-
-    if (matches.length > 0) {
-      currentMatchIndex = 0;
-      scrollToMatch(0);
-      return { found: true, total: matches.length, current: 1 };
-    }
-
-    return { found: false, total: 0, current: 0 };
   }
 
-  // Scroll to specific match
-  function scrollToMatch(index) {
-    if (index < 0 || index >= matches.length) return;
-    
-    const match = matches[index];
-    const element = match.element;
-    
-    // Scroll element into view
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-      inline: 'center'
-    });
-
-    // Highlight the cell
-    setTimeout(() => {
-      const rect = element.getBoundingClientRect();
-      showHighlightAt(rect);
-    }, 100);
-  }
-
-  // Navigate to next match
-  function nextMatch() {
-    if (matches.length === 0) {
-      return { found: false, total: 0, current: 0 };
-    }
-
-    currentMatchIndex = (currentMatchIndex + 1) % matches.length;
-    scrollToMatch(currentMatchIndex);
-    
-    return {
-      found: true,
-      total: matches.length,
-      current: currentMatchIndex + 1
-    };
-  }
-
-  // Navigate to previous match
-  function prevMatch() {
-    if (matches.length === 0) {
-      return { found: false, total: 0, current: 0 };
-    }
-
-    currentMatchIndex = currentMatchIndex <= 0 ? matches.length - 1 : currentMatchIndex - 1;
-    scrollToMatch(currentMatchIndex);
-    
-    return {
-      found: true,
-      total: matches.length,
-      current: currentMatchIndex + 1
-    };
-  }
-
-  // Main search function
-  function searchForName(name) {
+  // Perform search using native Find
+  async function searchForName(name) {
     currentSearchTerm = name;
-    hideHighlight();
+    searchAttempts = 0;
+
+    const findInput = await openFindDialog();
     
-    // First try DOM-based search
-    const result = searchInDOM(name);
-    
-    if (!result.found) {
-      // If DOM search fails, try native find as fallback
-      triggerNativeFind(name);
+    if (!findInput) {
       return {
         found: false,
         total: 0,
         current: 0,
-        message: 'Using native search - check Find dialog'
+        message: 'Could not open Find dialog. Try Ctrl+F manually.'
       };
     }
+
+    // Clear and set the search term
+    findInput.focus();
+    findInput.select();
     
-    return result;
+    // Use native input methods for better compatibility
+    document.execCommand('selectAll', false, null);
+    document.execCommand('insertText', false, name);
+    
+    // Trigger input event
+    findInput.dispatchEvent(new Event('input', { bubbles: true }));
+    findInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Wait for search results and press Enter to find first match
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Press Enter to trigger search
+    findInput.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    // Wait for results
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Try to read match count from the dialog
+    const matchInfo = getMatchInfo();
+    
+    if (matchInfo.total > 0) {
+      return {
+        found: true,
+        total: matchInfo.total,
+        current: matchInfo.current,
+        message: `Found ${matchInfo.total} match(es)`
+      };
+    }
+
+    return {
+      found: true,
+      total: 1,
+      current: 1,
+      message: 'Search active - use dialog navigation'
+    };
+  }
+
+  // Get match count from the Find dialog
+  function getMatchInfo() {
+    // Look for match counter text like "1 of 5" or "No results"
+    const counterSelectors = [
+      '.docs-findinput-count',
+      '[aria-label*="match"]',
+      '.waffle-find-and-replace-count'
+    ];
+
+    for (const selector of counterSelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        const text = el.textContent || '';
+        const match = text.match(/(\d+)\s*of\s*(\d+)/i);
+        if (match) {
+          return { current: parseInt(match[1]), total: parseInt(match[2]) };
+        }
+        if (text.toLowerCase().includes('no result')) {
+          return { current: 0, total: 0 };
+        }
+      }
+    }
+
+    return { current: 1, total: 1 };
+  }
+
+  // Navigate to next match using native buttons or keyboard
+  async function nextMatch() {
+    const findInput = getFindInput();
+    if (!findInput) {
+      return { found: false, total: 0, current: 0 };
+    }
+
+    // Try clicking the next button
+    const nextBtn = document.querySelector('[aria-label="Find next"]') ||
+                    document.querySelector('.docs-findinput-button-next') ||
+                    document.querySelector('[data-tooltip="Find next"]');
+    
+    if (nextBtn) {
+      nextBtn.click();
+    } else {
+      // Use Enter key as fallback
+      findInput.focus();
+      findInput.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
+        keyCode: 13,
+        bubbles: true
+      }));
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const matchInfo = getMatchInfo();
+
+    return {
+      found: true,
+      total: matchInfo.total,
+      current: matchInfo.current
+    };
+  }
+
+  // Navigate to previous match
+  async function prevMatch() {
+    const findInput = getFindInput();
+    if (!findInput) {
+      return { found: false, total: 0, current: 0 };
+    }
+
+    // Try clicking the prev button
+    const prevBtn = document.querySelector('[aria-label="Find previous"]') ||
+                    document.querySelector('.docs-findinput-button-prev') ||
+                    document.querySelector('[data-tooltip="Find previous"]');
+    
+    if (prevBtn) {
+      prevBtn.click();
+    } else {
+      // Use Shift+Enter as fallback
+      findInput.focus();
+      findInput.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
+        keyCode: 13,
+        shiftKey: true,
+        bubbles: true
+      }));
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const matchInfo = getMatchInfo();
+
+    return {
+      found: true,
+      total: matchInfo.total,
+      current: matchInfo.current
+    };
+  }
+
+  // Close the Find dialog
+  function clearSearch() {
+    const closeBtn = document.querySelector('[aria-label="Close"]') ||
+                     document.querySelector('.docs-findinput-close');
+    if (closeBtn) {
+      closeBtn.click();
+    }
+    currentSearchTerm = '';
+    return { success: true };
   }
 
   // Listen for messages from the extension
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Sheets content script received:', request);
 
-    switch (request.action) {
-      case 'searchName': {
-        createHighlightOverlay();
-        const searchResult = searchForName(request.name);
-        sendResponse(searchResult);
-        break;
-      }
+    (async () => {
+      switch (request.action) {
+        case 'searchName': {
+          const result = await searchForName(request.name);
+          sendResponse(result);
+          break;
+        }
 
-      case 'nextMatch': {
-        const nextResult = nextMatch();
-        sendResponse(nextResult);
-        break;
-      }
+        case 'nextMatch': {
+          const result = await nextMatch();
+          sendResponse(result);
+          break;
+        }
 
-      case 'prevMatch': {
-        const prevResult = prevMatch();
-        sendResponse(prevResult);
-        break;
-      }
+        case 'prevMatch': {
+          const result = await prevMatch();
+          sendResponse(result);
+          break;
+        }
 
-      case 'clearSearch': {
-        hideHighlight();
-        matches = [];
-        currentMatchIndex = -1;
-        currentSearchTerm = '';
-        sendResponse({ success: true });
-        break;
-      }
+        case 'clearSearch': {
+          sendResponse(clearSearch());
+          break;
+        }
 
-      case 'ping': {
-        sendResponse({ alive: true });
-        break;
+        case 'ping': {
+          sendResponse({ alive: true });
+          break;
+        }
       }
-    }
+    })();
 
     return true;
   });
 
-  // Initialize
-  createHighlightOverlay();
   console.log('Story Checker: Sheets content script loaded');
 })();

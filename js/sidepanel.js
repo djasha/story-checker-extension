@@ -108,6 +108,15 @@ document.addEventListener('DOMContentLoaded', () => {
   searchNavClose.addEventListener('click', exitSearchMode);
   searchPrevBtn.addEventListener('click', searchPrevMatch);
   searchNextBtn.addEventListener('click', searchNextMatch);
+  searchCurrentName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const name = searchCurrentName.value.trim();
+      if (name) {
+        searchInSheets(name);
+      }
+    }
+  });
 
   document.addEventListener('keydown', handleKeyPress);
   document.addEventListener('click', closeAllDropdowns);
@@ -640,9 +649,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateSearchUI() {
     if (currentSearchName) {
-      searchCurrentName.textContent = currentSearchName;
+      searchCurrentName.value = currentSearchName;
     } else {
-      searchCurrentName.textContent = 'Click a profile to search';
+      searchCurrentName.value = '';
     }
     
     if (searchMatchTotal > 0) {
