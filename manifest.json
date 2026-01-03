@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq18FKlxUn4JjWkdImP8OgqUzYH+gN1L0LvK2N1gqFprBYQtEbe+M7Bi3oQBb26eohHyUJ85fwTvxafzNIlw/bXB/pV7mYYWMCP6QJfOPtycObu2socDK95eqyeCBj9fmcb4ACHy8JkHcqGMV1z1i1eEfDkqa8TtZV9f+Z0P7hu2cZOPOHdsZRMu1A9+zttlnJtn8pbRLSlCMs22bNy5rRzyeuWh8rmQzEW/q+6fgrbg5medouPNeAb7nADRvXM466kQe1lfJUFVtaG9zOeKXX9U1H5nX2emC9prMM9afDyS1zY9fnHb2/1lbSSilzJB7GRy0puWRZn60Wts8Ny3CMQIDAQAB",
   "name": "Story Checker",
   "version": "1.0",
   "description": "Check Instagram and Facebook stories for marketing agencies",
