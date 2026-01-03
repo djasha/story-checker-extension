@@ -1,112 +1,194 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Story Checker Settings</title>
   <style>
+    :root {
+      --color-primary: #4f46e5;
+      --color-primary-hover: #4338ca;
+      --color-success: #10b981;
+      --color-success-light: rgba(16, 185, 129, 0.15);
+      --color-danger: #ef4444;
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-border: #e2e8f0;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       width: 100%;
       max-width: 800px;
       margin: 0 auto;
-      padding: 20px;
-      background-color: #f5f5f5;
-      color: #333;
+      padding: 24px;
+      background-color: var(--color-bg);
+      color: var(--color-text);
     }
-    
+
     h1 {
-      color: #2c3e50;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 10px;
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      border-bottom: 2px solid var(--color-border);
+      padding-bottom: 12px;
+      margin-bottom: 24px;
     }
-    
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
     .form-group {
       margin-bottom: 20px;
     }
-    
+
     label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--color-text);
     }
-    
-    input[type="text"] {
+
+    input[type="text"],
+    textarea {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
       font-size: 14px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
     }
-    
+
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
     .help-text {
       font-size: 12px;
-      color: #666;
-      margin-top: 5px;
+      color: var(--color-text-muted);
+      margin-top: 6px;
     }
-    
+
     button {
-      background-color: #007bff;
+      background: linear-gradient(135deg, var(--color-primary), #7c3aed);
       color: white;
       border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 14px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: var(--shadow-sm);
     }
-    
+
     button:hover {
-      background-color: #0056b3;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
-    
+
     .status {
-      margin-top: 20px;
-      padding: 10px;
-      border-radius: 4px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
     }
-    
+
     .success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+      border: 1px solid var(--color-success);
     }
-    
+
     .error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #991b1b;
+      border: 1px solid var(--color-danger);
     }
-    
+
     .section {
-      background-color: white;
-      padding: 20px;
-      border-radius: 5px;
+      background-color: var(--color-surface);
+      padding: 24px;
+      border-radius: var(--radius-md);
       margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-border);
+    }
+
+    .section p {
+      color: var(--color-text-muted);
+      margin-top: 0;
+    }
+
+    code {
+      background-color: var(--color-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--color-primary);
+    }
+
+    ol,
+    ul {
+      padding-left: 20px;
+      color: var(--color-text-muted);
+    }
+
+    li {
+      margin-bottom: 8px;
     }
   </style>
 </head>
+
 <body>
   <h1>Story Checker Settings</h1>
-  
+
   <div class="section">
     <h2>Google Sheets Configuration</h2>
     <p>Enter the IDs of your Google Sheets to connect the extension with your data.</p>
-    
+
     <div class="form-group">
       <label for="peopleSheetId">People List Sheet ID:</label>
       <input type="text" id="peopleSheetId" placeholder="Enter the Google Sheet ID for your people list">
       <p class="help-text">This is the spreadsheet containing your list of names and Instagram/Facebook URLs.</p>
     </div>
-    
+
     <div class="form-group">
       <label for="logSheetId">Story Checks Log Sheet ID:</label>
       <input type="text" id="logSheetId" placeholder="Enter the Google Sheet ID for your log">
       <p class="help-text">This is the spreadsheet where the extension will log story check results.</p>
     </div>
-    
+
     <button id="save-button">Save Settings</button>
     <div id="status" class="status" style="display: none;"></div>
   </div>
-  
+
   <div class="section">
     <h2>How to Find Your Sheet ID</h2>
     <p>The Sheet ID is found in the URL of your Google Sheet:</p>
@@ -116,7 +198,7 @@
       <li>Copy the ID part and paste it in the appropriate field above</li>
     </ol>
   </div>
-  
+
   <div class="section">
     <h2>Required Spreadsheet Format</h2>
     <p><strong>People List Sheet</strong> should have these columns:</p>
@@ -125,7 +207,7 @@
       <li>'Instagram URL' - Full Instagram profile URL</li>
       <li>'Facebook URL' - Full Facebook profile URL</li>
     </ul>
-    
+
     <p><strong>Story Checks Log</strong> will be populated with these columns:</p>
     <ul>
       <li>Date (Day/Month format)</li>
@@ -135,7 +217,7 @@
       <li>Result (YES/NO)</li>
     </ul>
   </div>
-  
+
   <div class="section">
     <h2>Special Profile Handling</h2>
     <p>Enter names of profiles that should display name instead of URL when logging:</p>
@@ -144,7 +226,8 @@
       <p class="help-text">For these profiles, the name will be recorded in the URL field instead of the actual URL.</p>
     </div>
   </div>
-  
+
   <script src="js/options.js"></script>
 </body>
+
 </html>

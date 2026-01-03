@@ -1,4 +1,4 @@
-// Side Panel script for Story Checker extension
+// Side Panel script for Story Checker - Phase 2 with UX improvements
 document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const authButton = document.getElementById('auth-button');
@@ -13,751 +13,595 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusMessage = document.getElementById('status-message');
   const loadMoreContainer = document.getElementById('load-more-container');
   const loadMoreButton = document.getElementById('load-more-button');
-  const filterNoButton = document.getElementById('filter-no-button');
-  
-  // Create preload counter element
-  const preloadCounter = document.createElement('span');
-  preloadCounter.id = 'preload-counter';
-  preloadCounter.style.display = 'inline-block';
-  preloadCounter.style.marginLeft = '5px';
-  preloadCounter.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-  preloadCounter.style.color = 'white';
-  preloadCounter.style.borderRadius = '50%';
-  preloadCounter.style.width = '20px';
-  preloadCounter.style.height = '20px';
-  preloadCounter.style.fontSize = '12px';
-  preloadCounter.style.lineHeight = '20px';
-  preloadCounter.style.textAlign = 'center';
-  preloadCounter.textContent = '0';
-  
-  // Main action elements
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const backButton = document.getElementById('back-button');
+  const preloadButton = document.getElementById('preload-button');
+
+  // Stats (clickable for filtering)
+  const statYes = document.getElementById('stat-yes');
+  const statNo = document.getElementById('stat-no');
+  const statPending = document.getElementById('stat-pending');
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  const yesCount = document.getElementById('yes-count');
+  const noCount = document.getElementById('no-count');
+  const pendingCount = document.getElementById('pending-count');
+
+  // Completion
+  const completionSection = document.getElementById('completion-section');
+  const completionYes = document.getElementById('completion-yes');
+  const completionNo = document.getElementById('completion-no');
+  const copyLinksButton = document.getElementById('copy-links-button');
+  const clearButton = document.getElementById('clear-button');
+
+  // Main actions
   const currentProfileElement = document.getElementById('current-profile');
   const currentUrlElement = document.getElementById('current-url');
   const yesButton = document.getElementById('yes-button');
   const noButton = document.getElementById('no-button');
-  const openButton = document.getElementById('open-button');
-  const preloadButton = document.getElementById('preload-button');
-  
-  // Preload options elements
+
+  // Preload options
   const preloadOptions = document.getElementById('preload-options');
   const preloadAmountButtons = document.querySelectorAll('.preload-amount button');
   const startPreloadButton = document.getElementById('start-preload-button');
-  
-  // Keep track of last check date for grouping
-  let lastCheckDate = null;
-  
-  // Global profiles data
+
+  // State
   let allProfiles = [];
   let profiles = [];
-  let filteredProfiles = []; // For filtered view (NO only)
-  let currentProfileIndex = -1; // No profile selected initially
+  let currentProfileIndex = -1;
   let currentPage = 0;
-  let pageSize = 10; // Show more profiles per page
+  let pageSize = 20;
   let preloadedUrls = new Set();
   let preloadAmount = 5;
-  let preloadTab = null;
-  let showNoOnly = false; // Filter toggle state
-  
-  // Profile choice tracking
+  let navigationHistory = [];
   let profileChoices = {};
-  
-  // Save current state when closing panel
-  window.addEventListener('beforeunload', () => {
-    // Save current state and profile choices
+  let skippedProfiles = new Set();
+  let specialProfiles = [];
+  let currentFilter = null; // 'yes', 'no', 'pending', or null (all)
+
+  // Save state on close
+  window.addEventListener('beforeunload', saveState);
+
+  function saveState() {
     chrome.storage.local.set({
       sidebarState: {
-        profiles: profiles,
-        currentProfileIndex: currentProfileIndex,
-        currentPage: currentPage,
-        preloadedUrls: Array.from(preloadedUrls)
+        profiles, currentProfileIndex, currentPage,
+        preloadedUrls: Array.from(preloadedUrls),
+        navigationHistory,
+        skippedProfiles: Array.from(skippedProfiles)
       },
-      profileChoices: profileChoices // Save profile choices separately for persistence
+      profileChoices
     });
-  });
-  
-  // Check auth status on load
+  }
+
+  // Init
   checkAuthStatus();
-  
-  // Add preload counter to preload button
-  preloadButton.appendChild(preloadCounter);
-  
-  // Set up event listeners
+  loadSpecialProfiles();
+
+  // Event listeners
   authButton.addEventListener('click', authenticateWithGoogle);
   reloadButton.addEventListener('click', loadAllProfiles);
-  settingsButton.addEventListener('click', openOptionsPage);
+  settingsButton.addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('options.html') }));
   historyButton.addEventListener('click', openHistorySheet);
   profilesSheetButton.addEventListener('click', openProfilesSheet);
   yesButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'YES'));
   noButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'NO'));
-  openButton.addEventListener('click', () => currentProfileIndex >= 0 && openProfile(currentProfileIndex));
   loadMoreButton.addEventListener('click', loadMoreProfiles);
   preloadButton.addEventListener('click', togglePreloadOptions);
   startPreloadButton.addEventListener('click', startPreloading);
-  filterNoButton.addEventListener('click', toggleNoFilter);
-  
-  // Set up preload amount selection
-  preloadAmountButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      // Update active state
-      preloadAmountButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      
-      // Update amount
-      preloadAmount = parseInt(button.dataset.amount);
-      startPreloadButton.textContent = `Preload ${preloadAmount} Profiles`;
+  backButton.addEventListener('click', goBack);
+  copyLinksButton.addEventListener('click', copyYesLinks);
+  clearButton.addEventListener('click', clearAndStartOver);
+
+  // Clickable stats for filtering
+  statYes.addEventListener('click', () => toggleFilter('yes'));
+  statNo.addEventListener('click', () => toggleFilter('no'));
+  statPending.addEventListener('click', () => toggleFilter('pending'));
+
+  preloadAmountButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      preloadAmountButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      preloadAmount = parseInt(btn.dataset.amount);
+      startPreloadButton.textContent = `Preload ${preloadAmount}`;
     });
   });
-  
-  // Add keyboard shortcuts
+
   document.addEventListener('keydown', handleKeyPress);
-  
+  document.addEventListener('click', closeAllDropdowns);
+
   // Functions
+  function showLoading() { loadingOverlay.classList.add('active'); }
+  function hideLoading() { loadingOverlay.classList.remove('active'); }
+
+  function loadSpecialProfiles() {
+    chrome.storage.local.get(['specialProfiles'], r => {
+      specialProfiles = r.specialProfiles || [];
+    });
+  }
+
+  function toggleFilter(type) {
+    // Toggle off if clicking same filter
+    if (currentFilter === type) {
+      currentFilter = null;
+      statYes.classList.remove('active');
+      statNo.classList.remove('active');
+      statPending.classList.remove('active');
+      applyFilter();
+      showStatusMessage('Showing all', 'info');
+      return;
+    }
+
+    currentFilter = type;
+    statYes.classList.toggle('active', type === 'yes');
+    statNo.classList.toggle('active', type === 'no');
+    statPending.classList.toggle('active', type === 'pending');
+    applyFilter();
+
+    const label = type === 'yes' ? 'YES' : type === 'no' ? 'NO' : 'Pending';
+    showStatusMessage(`Showing ${label} only`, 'info');
+  }
+
+  function applyFilter() {
+    loadMoreContainer.style.display = 'none';
+
+    if (!currentFilter) {
+      // Show all
+      profiles = allProfiles.slice(0, pageSize * (currentPage + 1));
+      if (profiles.length < allProfiles.length) loadMoreContainer.style.display = 'block';
+    } else if (currentFilter === 'yes') {
+      profiles = allProfiles.filter(p => profileChoices[p.url] === 'YES');
+    } else if (currentFilter === 'no') {
+      profiles = allProfiles.filter(p => profileChoices[p.url] === 'NO');
+    } else if (currentFilter === 'pending') {
+      profiles = allProfiles.filter(p => !profileChoices[p.url] && !skippedProfiles.has(p.url));
+    }
+
+    displayProfiles(profiles);
+  }
+
+  function updateStats() {
+    const total = allProfiles.length - skippedProfiles.size;
+    let yesTotal = 0, noTotal = 0;
+
+    Object.entries(profileChoices).forEach(([url, choice]) => {
+      if (!skippedProfiles.has(url)) {
+        if (choice === 'YES') yesTotal++;
+        else if (choice === 'NO') noTotal++;
+      }
+    });
+
+    const checked = yesTotal + noTotal;
+    const pending = total - checked;
+    const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+    progressBar.style.width = `${pct}%`;
+    progressText.textContent = `#${Math.max(0, currentProfileIndex + 1)} of ${allProfiles.length}`;
+    yesCount.textContent = yesTotal;
+    noCount.textContent = noTotal;
+    pendingCount.textContent = pending;
+
+    if (total > 0 && pending === 0) showCompletionScreen(yesTotal, noTotal);
+  }
+
+  function showCompletionScreen(y, n) {
+    profilesSection.style.display = 'none';
+    completionSection.classList.add('active');
+    completionYes.textContent = y;
+    completionNo.textContent = n;
+  }
+
+  function hideCompletionScreen() {
+    completionSection.classList.remove('active');
+    profilesSection.style.display = 'block';
+  }
+
+  function copyYesLinks() {
+    const links = allProfiles.filter(p => profileChoices[p.url] === 'YES').map(p => p.url);
+    if (!links.length) return showStatusMessage('No YES links', 'info');
+    navigator.clipboard.writeText(links.join('\n')).then(() => {
+      showStatusMessage(`Copied ${links.length} links`, 'success');
+      copyLinksButton.textContent = 'Copied!';
+      setTimeout(() => copyLinksButton.textContent = 'Copy YES Links', 2000);
+    }).catch(() => showStatusMessage('Failed to copy', 'error'));
+  }
+
+  function clearAndStartOver() {
+    profileChoices = {};
+    navigationHistory = [];
+    skippedProfiles.clear();
+    preloadedUrls.clear();
+    currentProfileIndex = -1;
+    currentFilter = null;
+    statYes.classList.remove('active');
+    statNo.classList.remove('active');
+    statPending.classList.remove('active');
+    chrome.storage.local.remove(['profileChoices', 'sidebarState']);
+    hideCompletionScreen();
+    loadAllProfiles();
+    showStatusMessage('Cleared! Starting fresh', 'success');
+  }
+
+  function goBack() {
+    if (!navigationHistory.length) return showStatusMessage('No history', 'info');
+    const prev = navigationHistory.pop();
+    updateBackButtonState();
+    selectProfileWithoutHistory(prev);
+    openProfileDirect(profiles[prev]);
+    scrollToActiveProfile();
+    showStatusMessage('Went back', 'info');
+  }
+
+  function updateBackButtonState() {
+    backButton.disabled = navigationHistory.length === 0;
+  }
+
   function checkAuthStatus() {
-    chrome.storage.local.get(['authToken', 'profileChoices', 'sidebarState'], (result) => {
+    chrome.storage.local.get(['authToken', 'profileChoices', 'sidebarState'], result => {
       if (result.authToken) {
-        authStatus.textContent = 'Authenticated ✓';
+        authStatus.textContent = 'Connected';
         authStatus.classList.add('success');
         authSection.style.display = 'none';
         profilesSection.style.display = 'block';
-        
-        // Load saved choices
-        if (result.profileChoices) {
-          profileChoices = result.profileChoices;
-          console.log('Loaded profileChoices from storage:', profileChoices);
-        }
-        
-        // Restore previous state if available
-        if (result.sidebarState) {
-          restorePreviousState(result.sidebarState);
-        } else {
-          // Load fresh data if no state saved
-          loadAllProfilesWithoutReset();
-        }
-      } else {
-        authStatus.textContent = 'Please authenticate to get started';
-        authStatus.classList.remove('success');
-        authSection.style.display = 'block';
-        profilesSection.style.display = 'none';
+        if (result.profileChoices) profileChoices = result.profileChoices;
+        if (result.sidebarState) restoreState(result.sidebarState);
+        else loadAllProfilesWithoutReset();
       }
     });
   }
-  
-  function restorePreviousState(state) {
-    // Restore profiles
-    if (state.profiles && state.profiles.length > 0) {
+
+  function restoreState(state) {
+    if (state.profiles?.length) {
       profiles = state.profiles;
+      if (state.skippedProfiles) skippedProfiles = new Set(state.skippedProfiles);
+      if (state.preloadedUrls) preloadedUrls = new Set(state.preloadedUrls);
+      if (state.navigationHistory) navigationHistory = state.navigationHistory;
       displayProfiles(profiles);
-      
-      // Restore current profile index
       if (state.currentProfileIndex >= 0 && state.currentProfileIndex < profiles.length) {
-        selectProfile(state.currentProfileIndex);
+        selectProfileWithoutHistory(state.currentProfileIndex);
+        setTimeout(scrollToActiveProfile, 100);
       }
-      
-      // Restore current page
       currentPage = state.currentPage || 0;
-      
-      // Restore preloaded URLs
-      if (state.preloadedUrls) {
-        preloadedUrls = new Set(state.preloadedUrls);
-        preloadCounter.textContent = preloadedUrls.size; // Update counter
-      }
-      
-      showStatusMessage('Restored previous session', 'success');
-    } else {
-      // Fall back to loading fresh data
-      loadAllProfiles();
-    }
+      updateBackButtonState();
+      loadAllProfilesInBackground();
+      showStatusMessage('Session restored', 'success');
+    } else loadAllProfiles();
   }
-  
+
   function authenticateWithGoogle() {
     authButton.disabled = true;
-    authStatus.textContent = 'Authenticating...';
-    
-    chrome.runtime.sendMessage({ action: 'authenticate' }, (response) => {
+    authStatus.textContent = 'Connecting...';
+    showLoading();
+    chrome.runtime.sendMessage({ action: 'authenticate' }, response => {
       authButton.disabled = false;
-      
-      if (response && response.success) {
-        authStatus.textContent = 'Authentication successful! Loading profiles...';
+      hideLoading();
+      if (response?.success) {
+        authStatus.textContent = 'Connected!';
         authStatus.classList.add('success');
         authSection.style.display = 'none';
         profilesSection.style.display = 'block';
         loadAllProfiles();
       } else {
-        const error = response ? response.error : 'Unknown error';
-        authStatus.textContent = `Authentication failed: ${error}`;
-        authStatus.classList.add('error');
+        authStatus.textContent = `Error: ${response?.error || 'Unknown'}`;
       }
     });
   }
-  
+
   function loadAllProfiles() {
-    showStatusMessage('Loading profiles...', 'info');
-    profilesList.innerHTML = '<p>Loading profiles...</p>';
+    showStatusMessage('Loading...', 'info');
+    profilesList.innerHTML = '<p style="text-align:center;color:#64748b;padding:16px;">Loading...</p>';
     loadMoreContainer.style.display = 'none';
-    
-    // Reset profile choices to clear all YES/NO colors
+    showLoading();
     profileChoices = {};
+    skippedProfiles.clear();
+    currentFilter = null;
+    statYes.classList.remove('active');
+    statNo.classList.remove('active');
+    statPending.classList.remove('active');
     chrome.storage.local.remove(['profileChoices']);
-    console.log('Cleared profileChoices during reload');
-    
-    // Reset filter as well
-    showNoOnly = false;
-    filterNoButton.classList.remove('active');
-    
-    chrome.runtime.sendMessage({ action: 'fetchProfiles' }, (response) => {
-      if (response && response.success) {
-        // Store all profiles but only display the first page
+    navigationHistory = [];
+    updateBackButtonState();
+
+    chrome.runtime.sendMessage({ action: 'fetchProfiles' }, response => {
+      hideLoading();
+      if (response?.success) {
         allProfiles = response.profiles;
         currentPage = 0;
-        preloadedUrls.clear(); // Reset preloaded URLs
-        preloadCounter.textContent = '0'; // Reset counter
-        
-        // Display first page
+        preloadedUrls.clear();
         profiles = allProfiles.slice(0, pageSize);
         displayProfiles(profiles);
-        
-        // Show load more button if there are more profiles
-        if (allProfiles.length > pageSize) {
-          loadMoreContainer.style.display = 'block';
-        }
-        
+        if (allProfiles.length > pageSize) loadMoreContainer.style.display = 'block';
         showStatusMessage(`Loaded ${allProfiles.length} profiles`, 'success');
-        
-        // Enable preload button if we have profiles
-        if (allProfiles.length > 0) {
-          preloadButton.disabled = false;
-        }
+        updateStats();
       } else {
-        const error = response ? response.error : 'Unknown error';
-        profilesList.innerHTML = `<p class="error-text">Error loading profiles: ${error}</p>`;
-        showStatusMessage(`Error: ${error}`, 'error');
+        profilesList.innerHTML = `<p style="color:#ef4444;text-align:center;">Error: ${response?.error}</p>`;
       }
     });
   }
-  
+
+  function loadAllProfilesInBackground() {
+    chrome.runtime.sendMessage({ action: 'fetchProfiles' }, r => {
+      if (r?.success) { allProfiles = r.profiles; updateStats(); }
+    });
+  }
+
   function loadMoreProfiles() {
-    // Return a promise so we can chain actions after loading more profiles
     return new Promise(resolve => {
       currentPage++;
-      const startIndex = currentPage * pageSize;
-      const endIndex = startIndex + pageSize;
-      const newProfiles = allProfiles.slice(startIndex, endIndex);
-      
-      // Add new profiles to the existing ones
-      profiles = [...profiles, ...newProfiles];
-      
-      // Display all profiles (including the new ones)
+      const start = currentPage * pageSize;
+      profiles = [...profiles, ...allProfiles.slice(start, start + pageSize)];
       displayProfiles(profiles);
-      
-      // Hide load more button if we've loaded all profiles
-      if (endIndex >= allProfiles.length) {
-        loadMoreContainer.style.display = 'none';
-      }
-      
-      showStatusMessage(`Loaded ${profiles.length} of ${allProfiles.length} profiles`, 'info');
-      
-      // Resolve the promise to signal completion
+      if (start + pageSize >= allProfiles.length) loadMoreContainer.style.display = 'none';
+      showStatusMessage(`Loaded ${profiles.length}/${allProfiles.length}`, 'info');
       resolve();
     });
   }
-  
-  function displayProfiles(profilesToDisplay) {
-    if (!profilesToDisplay || profilesToDisplay.length === 0) {
-      profilesList.innerHTML = '<p>No profiles found' + (showNoOnly ? ' marked as NO' : '') + '. Please check your Google Sheet.</p>';
-      return;
-    }
-    
-    // Clear existing profiles
-    profilesList.innerHTML = '';
-    
-    // Create profile items with selection functionality
-    profilesToDisplay.forEach((profile, index) => {
-      const profileItem = document.createElement('div');
-      profileItem.className = 'profile-item';
-      profileItem.dataset.index = index;
-      profileItem.dataset.url = profile.url;
-      
-      // Apply color based on previous choice
-      if (profileChoices[profile.url]) {
-        profileItem.classList.add(profileChoices[profile.url].toLowerCase());
-      }
-      
-      // Mark as preloaded if it's in the preloaded URLs set
-      if (preloadedUrls.has(profile.url)) {
-        profileItem.classList.add('preloaded');
-      }
-      
-      profileItem.innerHTML = `
-        <div class="profile-info">
-          <div class="profile-name">${profile.name}</div>
-          <div class="profile-url">${profile.platform}: ${shortenUrl(profile.url)}</div>
-        </div>
-      `;
-      
-      // Make the entire profile item clickable for selection
-      profileItem.addEventListener('click', () => selectProfile(index));
-      
-      profilesList.appendChild(profileItem);
-    });
-    
-    // Select the first profile by default if available
-    if (profilesToDisplay.length > 0) {
-      selectProfile(0);
-    }
-  }
-  
-  // Select a profile and update the UI
-  function selectProfile(index) {
-    // Make sure index is within bounds
-    if (index < 0 || index >= profiles.length) return;
-    
-    // Deselect all profiles
-    const allProfileItems = profilesList.querySelectorAll('.profile-item');
-    allProfileItems.forEach(item => item.classList.remove('active'));
-    
-    // Select the clicked profile
-    const selectedItem = profilesList.querySelector(`.profile-item[data-index="${index}"]`);
-    if (selectedItem) {
-      selectedItem.classList.add('active');
-      
-      // Update current profile display
-      currentProfileIndex = index;
-      const profile = profiles[index];
-      
-      currentProfileElement.textContent = profile.name;
-      currentUrlElement.textContent = `${profile.platform}: ${profile.url}`;
-      
-      // Update color based on previous choice
-      updateProfileStatusColor(profile.url);
-      
-      // Enable buttons
-      yesButton.disabled = false;
-      noButton.disabled = false;
-      openButton.disabled = false;
-      preloadButton.disabled = false;
-      
-      // Removed auto-scrolling as requested by user
-      // We don't want the sidebar to scroll automatically
-    }
-  }
-  
-  // Update profile name color based on choice
-  function updateProfileStatusColor(url) {
-    // Reset classes
-    currentProfileElement.classList.remove('yes', 'no');
-    
-    // Add appropriate class if a choice exists
-    if (profileChoices[url]) {
-      currentProfileElement.classList.add(profileChoices[url].toLowerCase());
-      
-      // Also update the profile item in the list
-      const profileItem = profilesList.querySelector(`.profile-item[data-url="${url}"]`);
-      if (profileItem) {
-        profileItem.classList.remove('yes', 'no');
-        profileItem.classList.add(profileChoices[url].toLowerCase());
-      }
-    }
-  }
-  
-  // Direct profile opening function that takes a profile object
-  function openProfileDirect(profile) {
-    if (!profile || !profile.url) {
-      console.error('Invalid profile provided to openProfileDirect', profile);
-      return;
-    }
-    
-    // Show the profile being opened
-    showStatusMessage(`Opening ${profile.name}'s profile...`, 'info');
-    
-    chrome.runtime.sendMessage(
-      { 
-        action: 'openProfile',
-        url: profile.url,
-        name: profile.name,
-        platform: profile.platform
-      }, 
-      (response) => {
-        if (!response || !response.success) {
-          const error = response ? response.error : 'Unknown error';
-          showStatusMessage(`Error opening profile: ${error}`, 'error');
-        } else {
-          // Add to preloaded URLs set
-          preloadedUrls.add(profile.url);
-          
-          // Mark as preloaded in UI
-          const profileItem = profilesList.querySelector(`.profile-item[data-url="${profile.url}"]`);
-          if (profileItem) {
-            profileItem.classList.add('preloaded');
-          }
-        }
-      }
-    );
-  }
-  
-  // Standard profile opening function that takes an index
-  function openProfile(index) {
-    // Validate the index is in range
-    if (index < 0 || index >= profiles.length) {
-      console.error(`Invalid profile index: ${index}, max: ${profiles.length - 1}`);
-      return;
-    }
-    
-    const profile = profiles[index];
-    openProfileDirect(profile);
-  }
-  
-  function logChoice(index, choice) {
-    const profile = profiles[index];
-    const timestamp = new Date().toISOString();
-    
-    // Update the UI to show logging in progress
-    showStatusMessage(`Logging ${choice} for ${profile.name}...`, 'info');
-    
-    chrome.runtime.sendMessage(
-      {
-        action: 'logChoice',
-        profile: profile,
-        choice: choice,
-        timestamp: timestamp
-      },
-      (response) => {
-        if (response && response.success) {
-          showStatusMessage(`Logged ${choice} for ${profile.name}`, 'success');
-          
-          // Store the choice in memory and update UI
-          profileChoices[profile.url] = choice;
-          updateProfileStatusColor(profile.url);
-          
-          // Store choices in Chrome storage to persist between sessions
-          chrome.storage.local.set({ profileChoices: profileChoices });
-          console.log('Saved profileChoices to Chrome storage:', profileChoices);
-          
-          // Check if we need to add a date separator
-          const today = new Date().toDateString();
-          if (lastCheckDate !== today) {
-            chrome.runtime.sendMessage(
-              {
-                action: 'addDateSeparator',
-                date: today
-              }
-            );
-            lastCheckDate = today;
-          }
-          
-          // Always move to next profile after logging a choice - INSTANTLY
-          if (index < profiles.length - 1) {
-            // Store the current index to ensure we move to the next one
-            const nextIndex = index + 1;
-            
-            // First select the next profile
-            selectProfile(nextIndex);
-            
-            // Then open it immediately, but make sure we're using the right index
-            // by directly referencing the profile rather than using the currentProfileIndex
-            const nextProfile = profiles[nextIndex];
-            openProfileDirect(nextProfile);
-          } else if (profiles.length < allProfiles.length) {
-            // We've reached the end of the currently loaded profiles
-            // but there are more profiles available - load more automatically
-            loadMoreProfiles().then(() => {
-              // After loading more profiles, go to the first newly loaded profile
-              const nextIndex = index + 1; // This will be the first profile in the new batch
-              selectProfile(nextIndex);
-              
-              const nextProfile = profiles[nextIndex];
-              openProfileDirect(nextProfile);
-            });
-          }
-        } else {
-          const error = response ? response.error : 'Unknown error';
-          showStatusMessage(`Error logging choice: ${error}`, 'error');
-        }
-      }
-    );
-  }
-  
-  function handleKeyPress(e) {
-    // Only process if profiles are loaded
-    if (profiles.length === 0) return;
-    
-    switch(e.key) {
-      case 'y':
-      case 'Y':
-        // Log YES for current profile
-        if (currentProfileIndex >= 0) logChoice(currentProfileIndex, 'YES');
-        break;
-      case 'n':
-      case 'N':
-        // Log NO for current profile  
-        if (currentProfileIndex >= 0) logChoice(currentProfileIndex, 'NO');
-        break;
-      case 'ArrowDown':
-      case 'j':
-        // Next profile
-        if (currentProfileIndex < profiles.length - 1) {
-          selectProfile(currentProfileIndex + 1);
-        }
-        break;
-      case 'ArrowUp':
-      case 'k':
-        // Previous profile
-        if (currentProfileIndex > 0) {
-          selectProfile(currentProfileIndex - 1);
-        }
-        break;
-      case 'r':
-      case 'R':
-        // Reload profiles
-        loadAllProfiles();
-        break;
-      case 'o':
-      case 'O':
-        // Open current profile
-        if (currentProfileIndex >= 0) openProfile(currentProfileIndex);
-        break;
-    }
-  }
-  
-  function openOptionsPage() {
-    // Open options page in a new tab instead of using chrome.runtime.openOptionsPage()
-    // which might not be working correctly
-    const optionsUrl = chrome.runtime.getURL('options.html');
-    chrome.tabs.create({ url: optionsUrl });
-  }
-  
-  function openHistorySheet() {
-    chrome.storage.local.get(['logSheetId'], (result) => {
-      if (result.logSheetId) {
-        const url = `https://docs.google.com/spreadsheets/d/${result.logSheetId}/edit`;
-        chrome.tabs.create({ url });
-      } else {
-        showStatusMessage('Log Sheet ID not set', 'error');
-      }
-    });
-  }
-  
-  function openProfilesSheet() {
-    chrome.storage.local.get(['peopleSheetId'], (result) => {
-      if (result.peopleSheetId) {
-        const url = `https://docs.google.com/spreadsheets/d/${result.peopleSheetId}/edit`;
-        chrome.tabs.create({ url });
-      } else {
-        showStatusMessage('People Sheet ID not set', 'error');
-      }
-    });
-  }
-  
-  function togglePreloadOptions() {
-    preloadOptions.classList.toggle('active');
-    if (preloadOptions.classList.contains('active')) {
-      preloadButton.textContent = 'Hide Options';
-    } else {
-      preloadButton.textContent = 'Preload';
-    }
-  }
-  
-  function startPreloading() {
-    // No need to cancel tab-based preloading since we use fetch now
-    
-    // Calculate which profiles to preload
-    const profilesToPreload = [];
-    let count = 0;
-    
-    // First look at profiles already displayed but not preloaded
-    for (let i = 0; i < profiles.length && count < preloadAmount; i++) {
-      if (!preloadedUrls.has(profiles[i].url)) {
-        profilesToPreload.push(profiles[i]);
-        count++;
-      }
-    }
-    
-    // If we need more, look at profiles not yet displayed
-    if (count < preloadAmount && profiles.length < allProfiles.length) {
-      const startIndex = profiles.length;
-      const neededProfiles = preloadAmount - count;
-      const endIndex = Math.min(startIndex + neededProfiles, allProfiles.length);
-      
-      for (let i = startIndex; i < endIndex; i++) {
-        if (!preloadedUrls.has(allProfiles[i].url)) {
-          profilesToPreload.push(allProfiles[i]);
-        }
-      }
-    }
-    
-    // Start preloading
-    if (profilesToPreload.length > 0) {
-      showStatusMessage(`Preloading ${profilesToPreload.length} profiles...`, 'info');
-      preloadProfiles(profilesToPreload);
-    } else {
-      showStatusMessage('No profiles left to preload', 'info');
-    }
-    
-    // Hide preload options
-    preloadOptions.classList.remove('active');
-    preloadButton.textContent = 'Preload';
-  }
-  
-  function preloadProfiles(profilesToPreload) {
-    let currentIndex = 0;
-    const total = profilesToPreload.length;
-    
-    showStatusMessage(`Starting background preload of ${total} profiles...`, 'info');
-    
-    // Instead of creating a visible tab, use fetch requests to preload profiles
-    function preloadNext() {
-      if (currentIndex < total) {
-        const profile = profilesToPreload[currentIndex];
-        showStatusMessage(`Preloading ${currentIndex + 1}/${total}: ${profile.name}...`, 'info');
-        
-        // Preload by using a fetch request instead of opening a tab
-        fetch(profile.url, { 
-          method: 'GET',
-          credentials: 'include' // This ensures cookies are sent with the request
-        })
-        .then(() => {
-          // Mark as preloaded whether fetch succeeds or fails
-          // (we just want to warm the browser cache)
-          preloadedUrls.add(profile.url);
-          
-          // Update profile item in UI
-          const profileItem = profilesList.querySelector(`.profile-item[data-url="${profile.url}"]`);
-          if (profileItem) {
-            profileItem.classList.add('preloaded');
-          }
-          
-          // Update the preload counter
-          preloadCounter.textContent = preloadedUrls.size;
-          
-          // Go to next profile
-          currentIndex++;
-          setTimeout(preloadNext, 800); // Slightly faster between requests
-        })
-        .catch(err => {
-          console.log(`Error preloading ${profile.url}:`, err);
-          // Still continue to the next profile even if this one failed
-          currentIndex++;
-          setTimeout(preloadNext, 800);
-        });
-      } else {
-        // All done!
-        showStatusMessage(`Preloaded ${total} profiles successfully!`, 'success');
-      }
-    }
-    
-    // Start preloading immediately
-    preloadNext();
-  }
-  
-  function shortenUrl(url) {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.hostname + urlObj.pathname.substring(0, 15) + (urlObj.pathname.length > 15 ? '...' : '');
-    } catch (e) {
-      return url.substring(0, 30) + (url.length > 30 ? '...' : '');
-    }
-  }
-  
-  // Load all profiles without resetting profile choices
+
   function loadAllProfilesWithoutReset() {
-    showStatusMessage('Loading profiles...', 'info');
-    profilesList.innerHTML = '<p>Loading profiles...</p>';
-    loadMoreContainer.style.display = 'none';
-    
-    // Don't reset profile choices - just fetch profiles
-    chrome.runtime.sendMessage({ action: 'fetchProfiles' }, (response) => {
-      if (response && response.success) {
-        // Store all profiles but only display the first page
-        allProfiles = response.profiles;
+    showLoading();
+    chrome.runtime.sendMessage({ action: 'fetchProfiles' }, r => {
+      hideLoading();
+      if (r?.success) {
+        allProfiles = r.profiles;
         currentPage = 0;
-        
-        // We keep preloadedUrls but update the counter
-        preloadCounter.textContent = preloadedUrls.size;
-        
-        // Display first page
         profiles = allProfiles.slice(0, pageSize);
         displayProfiles(profiles);
-        
-        // Show load more button if there are more profiles
-        if (allProfiles.length > pageSize) {
-          loadMoreContainer.style.display = 'block';
-        }
-        
-        showStatusMessage(`Loaded ${allProfiles.length} profiles with preserved choices`, 'success');
-        
-        // Enable preload button if we have profiles
-        if (allProfiles.length > 0) {
-          preloadButton.disabled = false;
-        }
-      } else {
-        const error = response ? response.error : 'Unknown error';
-        profilesList.innerHTML = `<p class="error-text">Error loading profiles: ${error}</p>`;
-        showStatusMessage(`Error: ${error}`, 'error');
+        if (allProfiles.length > pageSize) loadMoreContainer.style.display = 'block';
+        showStatusMessage(`Loaded ${allProfiles.length} profiles`, 'success');
+        updateStats();
       }
     });
   }
-  
-  function showStatusMessage(message, type) {
-    statusMessage.textContent = message;
-    statusMessage.className = '';
-    statusMessage.classList.add(type);
-    statusMessage.style.display = 'block';
-    
-    // Hide after 3 seconds
-    setTimeout(() => {
-      statusMessage.style.display = 'none';
-    }, 3000);
-  }
-  
-  // Toggle NO filter to show only profiles marked as NO
-  function toggleNoFilter() {
-    showNoOnly = !showNoOnly;
-    
-    // Toggle active state of the button
-    if (showNoOnly) {
-      filterNoButton.classList.add('active');
-      filterNoButton.textContent = 'Show All';
-      
-      // Filter profiles to show only NO
-      applyNoFilter();
-    } else {
-      filterNoButton.classList.remove('active');
-      filterNoButton.textContent = 'Show NO';
-      
-      // Reset to show all profiles
-      profiles = [...allProfiles].slice(0, pageSize * (currentPage + 1));
-      displayProfiles(profiles);
-      
-      // Show load more button if not all profiles are loaded
-      if (profiles.length < allProfiles.length) {
-        loadMoreContainer.style.display = 'block';
-      }
-    }
-    
-    showStatusMessage(showNoOnly ? 'Showing NO profiles only' : 'Showing all profiles', 'info');
-  }
-  
-  // Apply filter to show only NO profiles
-  function applyNoFilter() {
-    // Get profile URLs marked as NO
-    const noProfiles = Object.entries(profileChoices)
-      .filter(([url, choice]) => choice === 'NO')
-      .map(([url]) => url);
-    
-    if (noProfiles.length === 0) {
-      profiles = [];
-      displayProfiles(profiles);
-      loadMoreContainer.style.display = 'none';
-      showStatusMessage('No profiles marked as NO yet', 'info');
+
+  function displayProfiles(list) {
+    if (!list?.length) {
+      const msg = currentFilter ? `No ${currentFilter.toUpperCase()} profiles` : 'No profiles';
+      profilesList.innerHTML = `<p style="text-align:center;color:#64748b;padding:16px;">${msg}</p>`;
       return;
     }
-    
-    // Filter all profiles to only include those marked as NO
-    profiles = allProfiles.filter(profile => noProfiles.includes(profile.url));
-    displayProfiles(profiles);
-    
-    // No need for load more when filtering
-    loadMoreContainer.style.display = 'none';
-    
-    showStatusMessage(`Found ${profiles.length} profiles marked as NO`, 'success');
+
+    profilesList.innerHTML = '';
+
+    list.forEach((profile, idx) => {
+      const item = document.createElement('div');
+      item.className = 'profile-item';
+      item.dataset.index = idx;
+      item.dataset.url = profile.url;
+
+      if (skippedProfiles.has(profile.url)) item.classList.add('skipped');
+      if (profileChoices[profile.url]) item.classList.add(profileChoices[profile.url].toLowerCase());
+
+      const isSpecial = specialProfiles.includes(profile.name);
+      const isPreloaded = preloadedUrls.has(profile.url);
+      const globalIdx = allProfiles.findIndex(p => p.url === profile.url) + 1;
+
+      item.innerHTML = `
+        <div class="profile-number">${globalIdx}</div>
+        <div class="profile-info">
+          <div class="profile-name">
+            ${profile.name}
+            ${isSpecial ? '<span class="special-badge" title="Special">S</span>' : ''}
+          </div>
+          <div class="profile-url">${profile.platform}: ${shortenUrl(profile.url)}</div>
+        </div>
+        <div class="profile-indicators">
+          ${isPreloaded ? '<div class="preload-dot" title="Preloaded"></div>' : ''}
+        </div>
+        <button class="menu-btn" data-menu="${idx}">&vellip;</button>
+        <div class="dropdown-menu" data-dropdown="${idx}">
+          <div class="dropdown-item" data-action="skip"><span class="icon">&#9744;</span>${skippedProfiles.has(profile.url) ? 'Unskip' : 'Skip'}</div>
+          <div class="dropdown-item" data-action="special"><span class="icon">&starf;</span>${isSpecial ? 'Unmark' : 'Special'}</div>
+          <div class="dropdown-item" data-action="undo"><span class="icon">&circlearrowleft;</span>Undo</div>
+          <div class="dropdown-item danger" data-action="remove"><span class="icon">&times;</span>Remove</div>
+        </div>
+      `;
+
+      item.querySelector('.profile-info').addEventListener('click', () => selectProfile(idx));
+      item.querySelector('.menu-btn').addEventListener('click', e => { e.stopPropagation(); toggleDropdown(idx); });
+      item.querySelectorAll('.dropdown-item').forEach(mi => {
+        mi.addEventListener('click', e => { e.stopPropagation(); handleMenuAction(mi.dataset.action, profile, idx); closeAllDropdowns(); });
+      });
+
+      profilesList.appendChild(item);
+    });
+
+    if (list.length > 0 && currentProfileIndex < 0) selectProfileWithoutHistory(0);
+    else if (currentProfileIndex >= 0 && currentProfileIndex < list.length) selectProfileWithoutHistory(currentProfileIndex);
+    updateStats();
+  }
+
+  function handleMenuAction(action, profile, idx) {
+    switch (action) {
+      case 'skip':
+        if (skippedProfiles.has(profile.url)) { skippedProfiles.delete(profile.url); showStatusMessage('Unskipped', 'info'); }
+        else { skippedProfiles.add(profile.url); showStatusMessage('Skipped', 'info'); }
+        displayProfiles(profiles);
+        break;
+      case 'remove':
+        profiles = profiles.filter(p => p.url !== profile.url);
+        allProfiles = allProfiles.filter(p => p.url !== profile.url);
+        delete profileChoices[profile.url];
+        skippedProfiles.delete(profile.url);
+        if (currentProfileIndex >= profiles.length) currentProfileIndex = profiles.length - 1;
+        displayProfiles(profiles);
+        showStatusMessage('Removed', 'success');
+        break;
+      case 'special':
+        chrome.storage.local.get(['specialProfiles'], r => {
+          let sp = r.specialProfiles || [];
+          if (sp.includes(profile.name)) { sp = sp.filter(n => n !== profile.name); showStatusMessage('Unmarked', 'info'); }
+          else { sp.push(profile.name); showStatusMessage('Marked special', 'success'); }
+          chrome.storage.local.set({ specialProfiles: sp });
+          specialProfiles = sp;
+          displayProfiles(profiles);
+        });
+        break;
+      case 'undo':
+        if (profileChoices[profile.url]) {
+          delete profileChoices[profile.url];
+          chrome.storage.local.set({ profileChoices });
+          displayProfiles(profiles);
+          showStatusMessage('Undone', 'info');
+        } else showStatusMessage('Nothing to undo', 'info');
+        break;
+    }
+  }
+
+  function toggleDropdown(idx) {
+    document.querySelectorAll('.dropdown-menu').forEach((m, i) => {
+      if (i === idx) m.classList.toggle('open');
+      else m.classList.remove('open');
+    });
+  }
+
+  function closeAllDropdowns(e) {
+    if (e && e.target.closest('.menu-btn')) return;
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+  }
+
+  function selectProfile(idx) {
+    if (currentProfileIndex >= 0 && currentProfileIndex !== idx) {
+      navigationHistory.push(currentProfileIndex);
+      updateBackButtonState();
+    }
+    selectProfileCore(idx);
+    openProfileDirect(profiles[idx]);
+    scrollToActiveProfile();
+  }
+
+  function selectProfileWithoutHistory(idx) {
+    selectProfileCore(idx);
+  }
+
+  function selectProfileCore(idx) {
+    if (idx < 0 || idx >= profiles.length) return;
+    document.querySelectorAll('.profile-item').forEach(i => i.classList.remove('active'));
+    const item = profilesList.querySelector(`.profile-item[data-index="${idx}"]`);
+    if (item) {
+      item.classList.add('active');
+      currentProfileIndex = idx;
+      const p = profiles[idx];
+      currentProfileElement.textContent = p.name;
+      currentUrlElement.textContent = `${p.platform}: ${p.url}`;
+      updateProfileStatusColor(p.url);
+      yesButton.disabled = false;
+      noButton.disabled = false;
+      updateStats();
+    }
+  }
+
+  function scrollToActiveProfile() {
+    const active = profilesList.querySelector('.profile-item.active');
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function updateProfileStatusColor(url) {
+    currentProfileElement.classList.remove('yes', 'no');
+    if (profileChoices[url]) {
+      currentProfileElement.classList.add(profileChoices[url].toLowerCase());
+      const item = profilesList.querySelector(`.profile-item[data-url="${url}"]`);
+      if (item) { item.classList.remove('yes', 'no'); item.classList.add(profileChoices[url].toLowerCase()); }
+    }
+  }
+
+  function openProfileDirect(profile) {
+    if (!profile?.url) return;
+    showStatusMessage(`Opening ${profile.name}...`, 'info');
+    chrome.runtime.sendMessage({
+      action: 'openProfile',
+      url: profile.url,
+      name: profile.name,
+      platform: profile.platform
+    }, r => {
+      if (r?.success) { preloadedUrls.add(profile.url); displayProfiles(profiles); }
+    });
+  }
+
+  function logChoice(idx, choice) {
+    const profile = profiles[idx];
+    showStatusMessage(`Logging ${choice}...`, 'info');
+    chrome.runtime.sendMessage({
+      action: 'logChoice', profile, choice,
+      timestamp: new Date().toISOString()
+    }, r => {
+      if (r?.success) {
+        showStatusMessage(`${choice} logged`, 'success');
+        profileChoices[profile.url] = choice;
+        updateProfileStatusColor(profile.url);
+        chrome.storage.local.set({ profileChoices });
+        updateStats();
+
+        // Move to next non-skipped
+        let next = idx + 1;
+        while (next < profiles.length && skippedProfiles.has(profiles[next].url)) next++;
+
+        if (next < profiles.length) {
+          selectProfile(next);
+        } else if (profiles.length < allProfiles.length) {
+          loadMoreProfiles().then(() => {
+            if (profiles.length > idx + 1) selectProfile(idx + 1);
+          });
+        }
+      } else showStatusMessage(`Error: ${r?.error || 'Unknown'}`, 'error');
+    });
+  }
+
+  function handleKeyPress(e) {
+    if (!profiles.length || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch (e.key.toLowerCase()) {
+      case 'y': if (currentProfileIndex >= 0) logChoice(currentProfileIndex, 'YES'); break;
+      case 'n': if (currentProfileIndex >= 0) logChoice(currentProfileIndex, 'NO'); break;
+      case 'b': case 'backspace': e.preventDefault(); goBack(); break;
+      case 'arrowdown': case 'j': if (currentProfileIndex < profiles.length - 1) selectProfile(currentProfileIndex + 1); break;
+      case 'arrowup': case 'k': if (currentProfileIndex > 0) selectProfile(currentProfileIndex - 1); break;
+      case 'r': loadAllProfiles(); break;
+    }
+  }
+
+  function openHistorySheet() {
+    chrome.storage.local.get(['logSheetId'], r => {
+      if (r.logSheetId) chrome.tabs.create({ url: `https://docs.google.com/spreadsheets/d/${r.logSheetId}/edit` });
+      else showStatusMessage('No log sheet', 'error');
+    });
+  }
+
+  function openProfilesSheet() {
+    chrome.storage.local.get(['peopleSheetId'], r => {
+      if (r.peopleSheetId) chrome.tabs.create({ url: `https://docs.google.com/spreadsheets/d/${r.peopleSheetId}/edit` });
+      else showStatusMessage('No profiles sheet', 'error');
+    });
+  }
+
+  function togglePreloadOptions() { preloadOptions.classList.toggle('active'); }
+
+  function startPreloading() {
+    const toPreload = [];
+    for (let i = 0; i < profiles.length && toPreload.length < preloadAmount; i++) {
+      if (!preloadedUrls.has(profiles[i].url)) toPreload.push(profiles[i]);
+    }
+    if (!toPreload.length) { showStatusMessage('Nothing to preload', 'info'); preloadOptions.classList.remove('active'); return; }
+    showStatusMessage(`Preloading ${toPreload.length}...`, 'info');
+    let i = 0;
+    function next() {
+      if (i < toPreload.length) {
+        fetch(toPreload[i].url, { credentials: 'include' }).finally(() => { preloadedUrls.add(toPreload[i].url); i++; setTimeout(next, 500); });
+      } else { displayProfiles(profiles); showStatusMessage('Preload done', 'success'); }
+    }
+    next();
+    preloadOptions.classList.remove('active');
+  }
+
+  function shortenUrl(url) {
+    try { const u = new URL(url); return u.hostname + u.pathname.substring(0, 18) + (u.pathname.length > 18 ? '...' : ''); }
+    catch { return url.substring(0, 25) + (url.length > 25 ? '...' : ''); }
+  }
+
+  function showStatusMessage(msg, type) {
+    statusMessage.textContent = msg;
+    statusMessage.className = type;
+    statusMessage.style.display = 'block';
+    setTimeout(() => statusMessage.style.display = 'none', 2000);
   }
 });

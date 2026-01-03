@@ -1,391 +1,581 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Story Checker Side Panel</title>
-  <link rel="stylesheet" href="css/popup.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Checker</title>
   <style>
+    :root {
+      --color-primary: #4f46e5;
+      --color-primary-hover: #4338ca;
+      --color-primary-light: rgba(79, 70, 229, 0.1);
+      --color-success: #10b981;
+      --color-success-hover: #059669;
+      --color-success-light: rgba(16, 185, 129, 0.12);
+      --color-success-dark: rgba(16, 185, 129, 0.2);
+      --color-danger: #ef4444;
+      --color-danger-hover: #dc2626;
+      --color-danger-light: rgba(239, 68, 68, 0.12);
+      --color-danger-dark: rgba(239, 68, 68, 0.2);
+      --color-warning: #f59e0b;
+      --color-skip: #94a3b8;
+      --color-bg: #f1f5f9;
+      --color-surface: #ffffff;
+      --color-border: #e2e8f0;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.12);
+      --transition-fast: 150ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       width: 100%;
       height: 100vh;
-      margin: 0;
-      padding: 15px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
-      box-sizing: border-box;
-      overflow-y: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
       display: flex;
       flex-direction: column;
+      font-size: 13px;
     }
-    
+
+    /* STICKY TOP SECTION */
+    .sticky-top {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--color-bg);
+      padding: var(--space-sm);
+      padding-bottom: 0;
+    }
+
+    /* HEADER */
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: var(--space-sm);
     }
-    
+
     .header h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-primary);
     }
-    
-    .top-controls {
+
+    .header-actions {
       display: flex;
-      gap: 10px;
+      gap: 3px;
     }
-    
-    /* Main action area with big YES/NO buttons */
-    .main-actions {
-      display: flex;
-      flex-direction: column;
-      background-color: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
-    }
-    
-    .current-profile {
-      margin-bottom: 10px;
-      font-weight: bold;
-      font-size: 16px;
-      padding: 5px 10px;
-      border-radius: 4px;
-    }
-    
-    .current-profile.yes {
-      background-color: rgba(40, 167, 69, 0.2);
-      border-left: 4px solid #28a745;
-    }
-    
-    .current-profile.no {
-      background-color: rgba(220, 53, 69, 0.2);
-      border-left: 4px solid #dc3545;
-    }
-    
-    .current-profile-url {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 15px;
-      word-break: break-all;
-    }
-    
-    .yes-no-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    
-    .yes-button, .no-button {
-      flex: 1;
-      padding: 15px;
-      font-size: 18px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
+
+    .icon-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    
-    .yes-button {
-      background-color: #28a745;
-      color: white;
-    }
-    
-    .yes-button:hover {
-      background-color: #218838;
-    }
-    
-    .no-button {
-      background-color: #dc3545;
-      color: white;
-    }
-    
-    .no-button:hover {
-      background-color: #c82333;
-    }
-    
-    .keyboard-hint {
-      color: rgba(255,255,255,0.8);
       font-size: 12px;
-      margin-left: 5px;
+      transition: all var(--transition-fast);
     }
-    
-    /* Controls area */
-    .controls-bar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
+
+    .icon-btn:hover {
+      background: var(--color-bg);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
-    
-    .control-button {
-      flex: 1;
-      background-color: #6c757d;
+
+    .icon-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .icon-btn.primary {
+      background: var(--color-primary);
       color: white;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 4px;
+      border-color: var(--color-primary);
+    }
+
+    .icon-btn.success {
+      background: var(--color-success);
+      color: white;
+      border-color: var(--color-success);
+    }
+
+    .icon-btn.warning {
+      background: var(--color-warning);
+      color: white;
+      border-color: var(--color-warning);
+    }
+
+    /* PROGRESS */
+    .progress-stats {
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+      padding: var(--space-sm);
+      margin-bottom: var(--space-sm);
+      border: 1px solid var(--color-border);
+    }
+
+    .progress-bar-container {
+      position: relative;
+      height: 20px;
+      background: var(--color-bg);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-bottom: var(--space-xs);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-primary), #818cf8);
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+    }
+
+    .stat:hover {
+      background: var(--color-bg);
+    }
+
+    .stat.active {
+      box-shadow: 0 0 0 2px currentColor;
+    }
+
+    .stat.yes {
+      color: var(--color-success);
+    }
+
+    .stat.no {
+      color: var(--color-danger);
+    }
+
+    .stat.pending {
+      color: var(--color-text-muted);
+    }
+
+    /* MAIN ACTIONS */
+    .main-actions {
+      background: var(--color-surface);
+      padding: var(--space-sm);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      border: 1px solid var(--color-border);
+    }
+
+    .current-profile {
+      font-weight: 600;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 2px;
+      background: var(--color-bg);
+      border-left: 3px solid transparent;
+    }
+
+    .current-profile.yes {
+      background: var(--color-success-light);
+      border-left-color: var(--color-success);
+    }
+
+    .current-profile.no {
+      background: var(--color-danger-light);
+      border-left-color: var(--color-danger);
+    }
+
+    .current-profile-url {
+      color: var(--color-text-muted);
+      font-size: 10px;
+      margin-bottom: var(--space-sm);
+      padding-left: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .yes-no-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-sm);
+    }
+
+    .yes-button,
+    .no-button {
+      padding: 10px;
       font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 4px;
+      transition: all var(--transition-fast);
     }
-    
-    .control-button:hover {
-      background-color: #5a6268;
+
+    .yes-button {
+      background: var(--color-success);
+      color: white;
     }
-    
-    .control-button.settings {
-      background-color: #17a2b8;
+
+    .yes-button:hover:not(:disabled) {
+      background: var(--color-success-hover);
     }
-    
-    .control-button.settings:hover {
-      background-color: #138496;
+
+    .no-button {
+      background: var(--color-danger);
+      color: white;
     }
-    
-    .control-button.history {
-      background-color: #6610f2;
+
+    .no-button:hover:not(:disabled) {
+      background: var(--color-danger-hover);
     }
-    
-    .control-button.history:hover {
-      background-color: #520dc2;
+
+    .yes-button:disabled,
+    .no-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
-    
-    .control-button.sheet {
-      background-color: #20c997;
+
+    .keyboard-hint {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 9px;
     }
-    
-    .control-button.sheet:hover {
-      background-color: #1ba87e;
-    }
-    
-    .control-button.preload {
-      background-color: #fd7e14;
-    }
-    
-    .control-button.preload:hover {
-      background-color: #d56908;
-    }
-    
-    .control-button.filter {
-      background-color: #dc3545;
-    }
-    
-    .control-button.filter:hover {
-      background-color: #c82333;
-    }
-    
-    .control-button.filter.active {
-      background-color: #dc3545;
-      border: 2px solid white;
-      font-weight: bold;
-    }
-    
-    /* Profiles list */
-    .profiles-container {
-      flex: 1;
-      overflow-y: auto;
-    }
-    
-    .load-more-container {
-      padding: 10px;
-      text-align: center;
-    }
-    
-    .load-more-button {
-      background-color: #f8f9fa;
-      border: 1px solid #dee2e6;
-      color: #495057;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    
-    .load-more-button:hover {
-      background-color: #e9ecef;
-    }
-    
+
+    /* PRELOAD OPTIONS */
     .preload-options {
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
-      padding: 15px;
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+      padding: var(--space-sm);
+      margin-bottom: var(--space-sm);
       display: none;
+      border: 1px solid var(--color-border);
     }
-    
+
     .preload-options.active {
       display: block;
     }
-    
+
     .preload-options h3 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 16px;
+      font-size: 11px;
+      margin-bottom: var(--space-xs);
     }
-    
+
     .preload-amount {
       display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 4px;
+      margin-bottom: var(--space-xs);
     }
-    
+
     .preload-amount button {
       flex: 1;
-      padding: 5px;
-      background-color: #e9ecef;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
+      padding: 4px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
       cursor: pointer;
+      font-size: 10px;
     }
-    
+
     .preload-amount button.active {
-      background-color: #007bff;
+      background: var(--color-primary);
       color: white;
-      border-color: #007bff;
+      border-color: var(--color-primary);
     }
-    
+
     .start-preload-button {
       width: 100%;
-      padding: 8px;
-      background-color: #fd7e14;
+      padding: 5px;
+      background: var(--color-warning);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      font-weight: bold;
+      font-size: 10px;
+      font-weight: 600;
     }
-    
-    .start-preload-button:hover {
-      background-color: #d56908;
+
+    /* SCROLLABLE PROFILES */
+    .profiles-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 var(--space-sm) var(--space-sm);
     }
-    
+
     .profiles-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 5px;
     }
-    
+
     .profile-item {
       display: flex;
       align-items: center;
-      padding: 10px;
-      background-color: white;
-      border-radius: 4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 8px 10px;
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
       cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    
-    .profile-item:hover {
-      background-color: #f8f9fa;
-    }
-    
-    .profile-item.active {
-      background-color: #e2f0fd;
-      border-left: 4px solid #007bff;
-    }
-    
-    .profile-item.yes {
-      background-color: rgba(40, 167, 69, 0.15);
-      border-left: 4px solid #28a745;
-    }
-    
-    .profile-item.no {
-      background-color: rgba(220, 53, 69, 0.15);
-      border-left: 4px solid #dc3545;
-    }
-    
-    .profile-item.active.yes {
-      background-color: rgba(40, 167, 69, 0.25);
-    }
-    
-    .profile-item.active.no {
-      background-color: rgba(220, 53, 69, 0.25);
-    }
-    
-    .profile-item.preloaded {
+      transition: all var(--transition-fast);
       position: relative;
     }
-    
-    .profile-item.preloaded::after {
-      content: '';
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="%230d6efd"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg>');
-      background-repeat: no-repeat;
-      background-size: contain;
+
+    .profile-item:hover {
+      border-color: var(--color-primary);
     }
-    
+
+    .profile-item.active {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+    }
+
+    .profile-item.yes {
+      background: var(--color-success-light);
+      border-left: 3px solid var(--color-success);
+    }
+
+    .profile-item.no {
+      background: var(--color-danger-light);
+      border-left: 3px solid var(--color-danger);
+    }
+
+    .profile-item.skipped {
+      background: #f1f5f9;
+      border-left: 3px solid var(--color-skip);
+      opacity: 0.5;
+    }
+
+    .profile-item.active.yes {
+      background: var(--color-success-dark);
+    }
+
+    .profile-item.active.no {
+      background: var(--color-danger-dark);
+    }
+
+    .profile-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--color-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
     .profile-info {
       flex: 1;
+      min-width: 0;
     }
-    
+
     .profile-name {
-      font-weight: bold;
-      margin-bottom: 2px;
+      font-weight: 600;
+      font-size: 11px;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
-    
-    .profile-url {
-      font-size: 12px;
-      color: #6c757d;
-    }
-    
-    .open-button {
-      background-color: #007bff;
+
+    .profile-name .special-badge {
+      width: 12px;
+      height: 12px;
+      background: var(--color-warning);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7px;
       color: white;
+    }
+
+    .profile-url {
+      font-size: 9px;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-indicators {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 6px;
+    }
+
+    .preload-dot {
+      width: 5px;
+      height: 5px;
+      background: var(--color-primary);
+      border-radius: 50%;
+    }
+
+    .menu-btn {
+      width: 20px;
+      height: 20px;
       border: none;
-      border-radius: 4px;
-      padding: 5px 10px;
+      background: transparent;
       cursor: pointer;
-      margin-left: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-muted);
       font-size: 12px;
     }
-    
-    .open-button:hover {
-      background-color: #0069d9;
+
+    .menu-btn:hover {
+      background: var(--color-bg);
+      color: var(--color-text);
     }
-    
-    /* Status message */
+
+    .dropdown-menu {
+      position: absolute;
+      right: 8px;
+      top: 100%;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 100;
+      min-width: 130px;
+      display: none;
+      overflow: hidden;
+    }
+
+    .dropdown-menu.open {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dropdown-item:hover {
+      background: var(--color-bg);
+    }
+
+    .dropdown-item.danger {
+      color: var(--color-danger);
+    }
+
+    .dropdown-item .icon {
+      width: 12px;
+      text-align: center;
+    }
+
+    /* LOAD MORE */
+    .load-more-container {
+      padding: var(--space-sm);
+      text-align: center;
+    }
+
+    .load-more-button {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .load-more-button:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    /* STATUS MESSAGE */
     #status-message {
       position: fixed;
-      top: 10px;
-      right: 10px;
-      padding: 10px;
-      border-radius: 4px;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 5px 10px;
+      border-radius: var(--radius-full);
       display: none;
       z-index: 1000;
+      font-size: 10px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
     }
-    
+
     #status-message.success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background: var(--color-success);
+      color: white;
     }
-    
+
     #status-message.error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background: var(--color-danger);
+      color: white;
     }
-    
+
     #status-message.info {
-      background-color: #cce5ff;
-      color: #004085;
-      border: 1px solid #b8daff;
+      background: var(--color-primary);
+      color: white;
     }
-    
-    /* Auth section */
+
+    /* AUTH */
     #auth-section {
       display: flex;
       flex-direction: column;
@@ -393,101 +583,268 @@
       justify-content: center;
       height: 100%;
       text-align: center;
+      padding: 20px;
     }
-    
+
+    #auth-section h1 {
+      font-size: 18px;
+      color: var(--color-primary);
+      margin-bottom: 4px;
+    }
+
+    #auth-section p {
+      color: var(--color-text-muted);
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+
     #auth-button {
-      background-color: #007bff;
+      background: var(--color-primary);
       color: white;
       border: none;
-      border-radius: 4px;
-      padding: 10px 20px;
-      font-size: 16px;
-      font-weight: bold;
+      border-radius: var(--radius-md);
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
-      margin-bottom: 20px;
     }
-    
-    #auth-button:hover {
-      background-color: #0069d9;
-    }
-    
+
     .status-text {
-      color: #6c757d;
+      color: var(--color-text-muted);
+      font-size: 10px;
+      margin-top: 8px;
     }
-    
+
     .status-text.success {
-      color: #28a745;
+      color: var(--color-success);
     }
-    
-    .status-text.error {
-      color: #dc3545;
+
+    /* COMPLETION */
+    #completion-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      height: 100%;
+      text-align: center;
+    }
+
+    #completion-section.active {
+      display: flex;
+    }
+
+    .completion-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .completion-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 4px;
+    }
+
+    .completion-subtitle {
+      color: var(--color-text-muted);
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    .completion-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .completion-stat {
+      text-align: center;
+    }
+
+    .completion-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .completion-stat-value.yes {
+      color: var(--color-success);
+    }
+
+    .completion-stat-value.no {
+      color: var(--color-danger);
+    }
+
+    .completion-stat-label {
+      font-size: 9px;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+    }
+
+    .completion-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      max-width: 180px;
+    }
+
+    .copy-links-button {
+      background: var(--color-success);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .clear-button {
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .clear-button:hover {
+      border-color: var(--color-danger);
+      color: var(--color-danger);
+    }
+
+    /* LOADING */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(248, 250, 252, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
+
 <body>
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+  </div>
+
   <div id="auth-section">
     <h1>Story Checker</h1>
-    <p>Connect to Google Sheets to check stories</p>
-    <button id="auth-button">Connect to Google Sheets</button>
-    <p id="auth-status" class="status-text">Please authenticate to get started</p>
+    <p>Connect to Google Sheets</p>
+    <button id="auth-button">Connect to Google</button>
+    <p id="auth-status" class="status-text">Please authenticate</p>
   </div>
-  
+
   <div id="profiles-section" style="display: none;">
-    <div class="header">
-      <h1>Story Checker</h1>
-      <div class="top-controls">
-        <button id="reload-button" class="control-button">↻ Reload</button>
+    <!-- STICKY TOP -->
+    <div class="sticky-top">
+      <div class="header">
+        <h1>Story Checker</h1>
+        <div class="header-actions">
+          <button id="back-button" class="icon-btn primary" title="Back (B)" disabled>&larr;</button>
+          <button id="preload-button" class="icon-btn warning" title="Preload">&darr;</button>
+          <button id="profiles-sheet-button" class="icon-btn success" title="Profiles">&equiv;</button>
+          <button id="history-button" class="icon-btn" title="History"
+            style="background:#8b5cf6;color:white;border-color:#8b5cf6;">&orarr;</button>
+          <button id="settings-button" class="icon-btn" title="Settings"
+            style="background:#06b6d4;color:white;border-color:#06b6d4;">&cir;</button>
+          <button id="reload-button" class="icon-btn" title="Reload">&orarr;</button>
+        </div>
+      </div>
+
+      <div class="progress-stats">
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+          <span id="progress-text" class="progress-text">#0 of 0</span>
+        </div>
+        <div class="stats-row">
+          <span class="stat yes" id="stat-yes" title="Click to filter YES">Y: <span id="yes-count">0</span></span>
+          <span class="stat no" id="stat-no" title="Click to filter NO">N: <span id="no-count">0</span></span>
+          <span class="stat pending" id="stat-pending" title="Click to show pending">?: <span
+              id="pending-count">0</span></span>
+        </div>
+      </div>
+
+      <div class="main-actions">
+        <div id="current-profile" class="current-profile">Select a profile</div>
+        <div id="current-url" class="current-profile-url"></div>
+        <div class="yes-no-buttons">
+          <button id="yes-button" class="yes-button" disabled>YES <span class="keyboard-hint">(Y)</span></button>
+          <button id="no-button" class="no-button" disabled>NO <span class="keyboard-hint">(N)</span></button>
+        </div>
+      </div>
+
+      <div id="preload-options" class="preload-options">
+        <h3>Preload Profiles</h3>
+        <div class="preload-amount">
+          <button data-amount="5" class="active">5</button>
+          <button data-amount="10">10</button>
+          <button data-amount="20">20</button>
+          <button data-amount="50">50</button>
+        </div>
+        <button id="start-preload-button" class="start-preload-button">Preload 5</button>
       </div>
     </div>
-    
-    <!-- Main action area with big YES/NO buttons -->
-    <div class="main-actions">
-      <div id="current-profile" class="current-profile">Select a profile to check</div>
-      <div id="current-url" class="current-profile-url"></div>
-      
-      <div class="yes-no-buttons">
-        <button id="yes-button" class="yes-button" disabled>YES <span class="keyboard-hint">(Y)</span></button>
-        <button id="no-button" class="no-button" disabled>NO <span class="keyboard-hint">(N)</span></button>
-      </div>
-    </div>
-    
-    <!-- Preload Options Panel -->
-    <div id="preload-options" class="preload-options">
-      <h3>Preload Profiles</h3>
-      <div class="preload-amount">
-        <button data-amount="5" class="active">5</button>
-        <button data-amount="10">10</button>
-        <button data-amount="20">20</button>
-        <button data-amount="50">50</button>
-      </div>
-      <button id="start-preload-button" class="start-preload-button">Preload 5 Profiles</button>
-    </div>
-    
-    <!-- Controls bar -->
-    <div class="controls-bar">
-      <button id="open-button" class="control-button" disabled>Open Profile</button>
-      <button id="filter-no-button" class="control-button filter">Show NO</button>
-      <button id="preload-button" class="control-button preload" disabled>Preload</button>
-    </div>
-    
-    <!-- Sheet Controls -->
-    <div class="controls-bar">
-      <button id="profiles-sheet-button" class="control-button sheet">Profiles Sheet</button>
-      <button id="history-button" class="control-button history">History Sheet</button>
-      <button id="settings-button" class="control-button settings">Settings</button>
-    </div>
-    
-    <!-- Profiles list -->
+
+    <!-- SCROLLABLE PROFILES -->
     <div class="profiles-container">
       <div id="profiles-list" class="profiles-list"></div>
       <div id="load-more-container" class="load-more-container" style="display: none;">
-        <button id="load-more-button" class="load-more-button">Load More Profiles</button>
+        <button id="load-more-button" class="load-more-button">Load More</button>
       </div>
     </div>
-    
+
     <div id="status-message"></div>
   </div>
-  
+
+  <div id="completion-section">
+    <div class="completion-icon">&#127881;</div>
+    <div class="completion-title">All Done!</div>
+    <div class="completion-subtitle">All profiles checked</div>
+    <div class="completion-stats">
+      <div class="completion-stat">
+        <span id="completion-yes" class="completion-stat-value yes">0</span>
+        <span class="completion-stat-label">Yes</span>
+      </div>
+      <div class="completion-stat">
+        <span id="completion-no" class="completion-stat-value no">0</span>
+        <span class="completion-stat-label">No</span>
+      </div>
+    </div>
+    <div class="completion-actions">
+      <button id="copy-links-button" class="copy-links-button">Copy YES Links</button>
+      <button id="clear-button" class="clear-button">Clear &amp; Start Over</button>
+    </div>
+  </div>
+
   <script src="js/sidepanel.js"></script>
 </body>
+
 </html>
