@@ -769,7 +769,6 @@
         <h1>Story Checker</h1>
         <div class="header-actions">
           <button id="back-button" class="icon-btn primary" title="Back (B)" disabled>&larr;</button>
-          <button id="preload-button" class="icon-btn warning" title="Preload">&darr;</button>
           <button id="profiles-sheet-button" class="icon-btn success" title="Profiles">&equiv;</button>
           <button id="history-button" class="icon-btn" title="History"
             style="background:#8b5cf6;color:white;border-color:#8b5cf6;">&orarr;</button>
@@ -800,28 +799,18 @@
           <button id="no-button" class="no-button" disabled>NO <span class="keyboard-hint">(N)</span></button>
         </div>
       </div>
-
-      <div id="preload-options" class="preload-options">
-        <h3>Preload Profiles</h3>
-        <div class="preload-amount">
-          <button data-amount="5" class="active">5</button>
-          <button data-amount="10">10</button>
-          <button data-amount="20">20</button>
-          <button data-amount="50">50</button>
-        </div>
-        <button id="start-preload-button" class="start-preload-button">Preload 5</button>
-      </div>
     </div>
+  </div>
 
-    <!-- SCROLLABLE PROFILES -->
-    <div class="profiles-container">
-      <div id="profiles-list" class="profiles-list"></div>
-      <div id="load-more-container" class="load-more-container" style="display: none;">
-        <button id="load-more-button" class="load-more-button">Load More</button>
-      </div>
+  <!-- SCROLLABLE PROFILES -->
+  <div class="profiles-container">
+    <div id="profiles-list" class="profiles-list"></div>
+    <div id="load-more-container" class="load-more-container" style="display: none;">
+      <button id="load-more-button" class="load-more-button">Load More</button>
     </div>
+  </div>
 
-    <div id="status-message"></div>
+  <div id="status-message"></div>
   </div>
 
   <div id="completion-section">

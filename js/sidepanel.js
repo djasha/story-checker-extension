@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadMoreButton = document.getElementById('load-more-button');
   const loadingOverlay = document.getElementById('loading-overlay');
   const backButton = document.getElementById('back-button');
-  const preloadButton = document.getElementById('preload-button');
 
   // Stats (clickable for filtering)
   const statYes = document.getElementById('stat-yes');
@@ -40,11 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const yesButton = document.getElementById('yes-button');
   const noButton = document.getElementById('no-button');
 
-  // Preload options
-  const preloadOptions = document.getElementById('preload-options');
-  const preloadAmountButtons = document.querySelectorAll('.preload-amount button');
-  const startPreloadButton = document.getElementById('start-preload-button');
-
   // State
   let allProfiles = [];
   let profiles = [];
@@ -52,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentPage = 0;
   let pageSize = 20;
   let preloadedUrls = new Set();
-  let preloadAmount = 5;
   let navigationHistory = [];
   let profileChoices = {};
   let skippedProfiles = new Set();
@@ -87,8 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
   yesButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'YES'));
   noButton.addEventListener('click', () => currentProfileIndex >= 0 && logChoice(currentProfileIndex, 'NO'));
   loadMoreButton.addEventListener('click', loadMoreProfiles);
-  preloadButton.addEventListener('click', togglePreloadOptions);
-  startPreloadButton.addEventListener('click', startPreloading);
+  loadMoreButton.addEventListener('click', loadMoreProfiles);
   backButton.addEventListener('click', goBack);
   copyLinksButton.addEventListener('click', copyYesLinks);
   clearButton.addEventListener('click', clearAndStartOver);
@@ -97,15 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
   statYes.addEventListener('click', () => toggleFilter('yes'));
   statNo.addEventListener('click', () => toggleFilter('no'));
   statPending.addEventListener('click', () => toggleFilter('pending'));
-
-  preloadAmountButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      preloadAmountButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      preloadAmount = parseInt(btn.dataset.amount);
-      startPreloadButton.textContent = `Preload ${preloadAmount}`;
-    });
-  });
 
   document.addEventListener('keydown', handleKeyPress);
   document.addEventListener('click', closeAllDropdowns);
@@ -313,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (allProfiles.length > pageSize) loadMoreContainer.style.display = 'block';
         showStatusMessage(`Loaded ${allProfiles.length} profiles`, 'success');
         updateStats();
+        queueRollingPreload();
       } else {
         profilesList.innerHTML = `<p style="color:#ef4444;text-align:center;">Error: ${response?.error}</p>`;
       }
@@ -349,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (allProfiles.length > pageSize) loadMoreContainer.style.display = 'block';
         showStatusMessage(`Loaded ${allProfiles.length} profiles`, 'success');
         updateStats();
+        queueRollingPreload();
       }
     });
   }
@@ -539,9 +524,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (next < profiles.length) {
           selectProfile(next);
+          queueRollingPreload();
         } else if (profiles.length < allProfiles.length) {
           loadMoreProfiles().then(() => {
-            if (profiles.length > idx + 1) selectProfile(idx + 1);
+            if (profiles.length > idx + 1) {
+              selectProfile(idx + 1);
+              queueRollingPreload();
+            }
           });
         }
       } else showStatusMessage(`Error: ${r?.error || 'Unknown'}`, 'error');
@@ -574,23 +563,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function togglePreloadOptions() { preloadOptions.classList.toggle('active'); }
-
-  function startPreloading() {
+  function queueRollingPreload() {
+    // Preload next 3 pending profiles
+    const lookAhead = 3;
+    const startIndex = Math.max(0, currentProfileIndex);
     const toPreload = [];
-    for (let i = 0; i < profiles.length && toPreload.length < preloadAmount; i++) {
-      if (!preloadedUrls.has(profiles[i].url)) toPreload.push(profiles[i]);
+
+    for (let i = startIndex; i < profiles.length && toPreload.length < lookAhead; i++) {
+      const p = profiles[i];
+      if (!preloadedUrls.has(p.url) && !profileChoices[p.url] && !skippedProfiles.has(p.url)) {
+        toPreload.push(p);
+      }
     }
-    if (!toPreload.length) { showStatusMessage('Nothing to preload', 'info'); preloadOptions.classList.remove('active'); return; }
-    showStatusMessage(`Preloading ${toPreload.length}...`, 'info');
+
+    if (toPreload.length === 0) return;
+
+    // Small delay between fetches to be gentle
     let i = 0;
     function next() {
       if (i < toPreload.length) {
-        fetch(toPreload[i].url, { credentials: 'include' }).finally(() => { preloadedUrls.add(toPreload[i].url); i++; setTimeout(next, 500); });
-      } else { displayProfiles(profiles); showStatusMessage('Preload done', 'success'); }
+        const profile = toPreload[i];
+        fetch(profile.url, { credentials: 'include' })
+          .finally(() => {
+            preloadedUrls.add(profile.url);
+            updateProfileIndicator(profile.url);
+            i++;
+            setTimeout(next, 600);
+          });
+      }
     }
     next();
-    preloadOptions.classList.remove('active');
+  }
+
+  function updateProfileIndicator(url) {
+    const item = profilesList.querySelector(`.profile-item[data-url="${url}"]`);
+    if (item) {
+      const indicators = item.querySelector('.profile-indicators');
+      if (indicators && !indicators.querySelector('.preload-dot')) {
+        indicators.innerHTML = '<div class="preload-dot" title="Preloaded"></div>';
+      }
+    }
   }
 
   function shortenUrl(url) {
