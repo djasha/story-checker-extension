@@ -7,8 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveButton = document.getElementById('save-button');
   const statusDiv = document.getElementById('status');
   
+  let currentUserEmail = null;
+  
   // Load saved settings
-  chrome.storage.local.get(['peopleSheetId', 'logSheetId', 'specialProfiles'], (result) => {
+  chrome.storage.local.get(['peopleSheetId', 'logSheetId', 'specialProfiles', 'currentUserEmail'], (result) => {
+    currentUserEmail = result.currentUserEmail;
+    
     if (result.peopleSheetId) {
       peopleSheetIdInput.value = result.peopleSheetId;
     }
@@ -17,6 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (result.specialProfiles) {
       specialProfilesInput.value = result.specialProfiles.join('\n');
+    }
+    
+    // Show which account is logged in
+    if (currentUserEmail) {
+      showStatus(`Logged in as: ${currentUserEmail}`, 'success');
     }
   });
   
@@ -38,22 +47,32 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    // Save to storage
-    chrome.storage.local.set(
-      { 
-        peopleSheetId: peopleSheetId, 
+    // Prepare data to save
+    const settingsData = { 
+      peopleSheetId: peopleSheetId, 
+      logSheetId: logSheetId,
+      specialProfiles: specialProfiles
+    };
+    
+    // Also save per-user settings if we have user email
+    if (currentUserEmail) {
+      const userSettingsKey = `userSettings_${currentUserEmail}`;
+      settingsData[userSettingsKey] = {
+        peopleSheetId: peopleSheetId,
         logSheetId: logSheetId,
         specialProfiles: specialProfiles
-      },
-      () => {
-        showStatus('Settings saved successfully!', 'success');
-        
-        // Reload the extension to apply new settings
-        setTimeout(() => {
-          chrome.runtime.reload();
-        }, 1500);
-      }
-    );
+      };
+    }
+    
+    // Save to storage
+    chrome.storage.local.set(settingsData, () => {
+      showStatus('Settings saved successfully!', 'success');
+      
+      // Reload the extension to apply new settings
+      setTimeout(() => {
+        chrome.runtime.reload();
+      }, 1500);
+    });
   });
   
   // Helper to show status messages
@@ -62,9 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     statusDiv.className = 'status ' + type;
     statusDiv.style.display = 'block';
     
-    // Hide after 3 seconds
+    // Hide after 5 seconds (longer for account info)
     setTimeout(() => {
       statusDiv.style.display = 'none';
-    }, 3000);
+    }, 5000);
   }
 });

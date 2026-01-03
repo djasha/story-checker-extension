@@ -74,7 +74,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function authenticateWithGoogle(sendResponse) {
   console.log('Starting authentication using chrome.identity.getAuthToken...');
 
-  chrome.identity.getAuthToken({ interactive: true }, (token) => {
+  chrome.identity.getAuthToken({ interactive: true }, async (token) => {
     if (chrome.runtime.lastError) {
       console.error('Authentication error:', chrome.runtime.lastError);
       sendResponse({
@@ -92,12 +92,54 @@ function authenticateWithGoogle(sendResponse) {
 
     console.log('Authentication successful!');
 
-    // Store the token
-    chrome.storage.local.set({ authToken: token }, () => {
-      console.log('Access token stored successfully');
-      sendResponse({ success: true });
-    });
+    // Get user info to store settings per account
+    try {
+      const userInfo = await fetchUserInfo(token);
+      const userEmail = userInfo.email;
+      console.log('Logged in as:', userEmail);
+
+      // Check if we have saved settings for this user
+      const userSettingsKey = `userSettings_${userEmail}`;
+      chrome.storage.local.get([userSettingsKey], (result) => {
+        const savedSettings = result[userSettingsKey];
+        
+        const dataToStore = { 
+          authToken: token,
+          currentUserEmail: userEmail
+        };
+
+        // Restore user's sheet IDs if they exist
+        if (savedSettings) {
+          console.log('Restoring settings for user:', userEmail);
+          if (savedSettings.peopleSheetId) dataToStore.peopleSheetId = savedSettings.peopleSheetId;
+          if (savedSettings.logSheetId) dataToStore.logSheetId = savedSettings.logSheetId;
+          if (savedSettings.specialProfiles) dataToStore.specialProfiles = savedSettings.specialProfiles;
+        }
+
+        chrome.storage.local.set(dataToStore, () => {
+          console.log('Access token and user settings stored successfully');
+          sendResponse({ success: true, email: userEmail, settingsRestored: !!savedSettings });
+        });
+      });
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+      // Still store token even if user info fetch fails
+      chrome.storage.local.set({ authToken: token }, () => {
+        sendResponse({ success: true });
+      });
+    }
   });
+}
+
+// Fetch user info from Google
+async function fetchUserInfo(token) {
+  const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch user info');
+  }
+  return response.json();
 }
 
 // Fetch profiles from Google Sheets
